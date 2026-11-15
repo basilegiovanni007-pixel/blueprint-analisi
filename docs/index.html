@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Blueprint – Risolutore di Analisi</title>
+  <meta name="description" content="Blueprint risolve gli esercizi di Analisi I e II passo passo, usando solo i tuoi appunti. Gratis, per Windows, i tuoi dati restano sul tuo computer." />
+  <meta name="theme-color" content="#0b3d91" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <style>
+    /* Font ospitati sul sito stesso: nessuna richiesta a servizi esterni */
+    @font-face { font-family: "IBM Plex Mono"; font-weight: 400; font-display: swap; src: url(fonts/ibm-plex-mono-latin-400-normal.woff2) format("woff2"); }
+    @font-face { font-family: "IBM Plex Mono"; font-weight: 500; font-display: swap; src: url(fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2"); }
+    @font-face { font-family: "IBM Plex Mono"; font-weight: 600; font-display: swap; src: url(fonts/ibm-plex-mono-latin-600-normal.woff2) format("woff2"); }
+    @font-face { font-family: "IBM Plex Sans"; font-weight: 400; font-display: swap; src: url(fonts/ibm-plex-sans-latin-400-normal.woff2) format("woff2"); }
+    @font-face { font-family: "IBM Plex Sans"; font-weight: 500; font-display: swap; src: url(fonts/ibm-plex-sans-latin-500-normal.woff2) format("woff2"); }
+
+    :root {
+      --blu: #0b3d91;
+      --blu-scuro: #082659;
+      --blu-profondo: #061b40;
+      --bianco: #f4f8ff;
+      --azzurrino: #a9c8f5;
+      --linea: rgba(200, 222, 255, 0.45);
+      --linea-tenue: rgba(200, 222, 255, 0.18);
+      --accento: #ffd866;
+      --ok: #7ee2a8;
+      --tecnico: "IBM Plex Mono", Consolas, monospace;
+      --testo: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--bianco);
+      font: 17px/1.65 var(--testo);
+      background-color: var(--blu);
+      /* Carta millimetrata: righe ogni 8px e ogni 40px */
+      background-image:
+        linear-gradient(var(--linea-tenue) 1px, transparent 1px),
+        linear-gradient(90deg, var(--linea-tenue) 1px, transparent 1px),
+        linear-gradient(rgba(200, 222, 255, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200, 222, 255, 0.07) 1px, transparent 1px);
+      background-size: 40px 40px, 40px 40px, 8px 8px, 8px 8px;
+    }
+
+    a { color: var(--accento); }
+    a:focus-visible, button:focus-visible { outline: 2px solid var(--accento); outline-offset: 3px; }
+
+    h1, h2, h3 { font-family: var(--tecnico); font-weight: 500; letter-spacing: 0.03em; line-height: 1.2; margin: 0; }
+
+    .contenitore { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+    /* ---------- intestazione ---------- */
+    .testata {
+      position: sticky; top: 0; z-index: 10;
+      background: rgba(6, 27, 64, 0.92);
+      border-bottom: 1px solid var(--linea);
+      backdrop-filter: blur(6px);
+    }
+    .testata .contenitore { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 62px; }
+    .logo { display: flex; align-items: center; gap: 10px; color: var(--bianco); text-decoration: none; font: 600 18px var(--tecnico); letter-spacing: 0.2em; }
+    .logo img { width: 30px; height: 30px; }
+    .menu { display: flex; gap: 22px; font: 13px var(--tecnico); letter-spacing: 0.1em; text-transform: uppercase; }
+    .menu a { color: var(--azzurrino); text-decoration: none; }
+    .menu a:hover { color: var(--bianco); }
+
+    /* ---------- apertura ---------- */
+    .apertura { padding: 72px 0 56px; }
+    .apertura .contenitore { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center; }
+    .etichetta { font: 500 13px var(--tecnico); letter-spacing: 0.2em; text-transform: uppercase; color: var(--accento); }
+    .apertura h1 { font-size: clamp(34px, 5vw, 54px); margin: 12px 0 18px; }
+    .apertura h1 em { font-style: normal; color: var(--accento); }
+    .apertura p.sotto { font-size: 19px; color: var(--azzurrino); max-width: 34em; margin: 0 0 30px; }
+
+    .scarica {
+      display: inline-flex; align-items: center; gap: 14px;
+      padding: 16px 26px;
+      background: var(--accento); color: var(--blu-profondo);
+      font: 600 16px var(--tecnico); letter-spacing: 0.08em; text-transform: uppercase;
+      text-decoration: none;
+      box-shadow: 6px 6px 0 var(--blu-profondo);
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+    .scarica:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--blu-profondo); }
+    .scarica:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--blu-profondo); }
+    .scarica svg { flex-shrink: 0; }
+    .dettagli-scarica { margin-top: 16px; font: 13px var(--tecnico); color: var(--azzurrino); letter-spacing: 0.04em; }
+    .dettagli-scarica span + span::before { content: " · "; }
+    .garanzie { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 26px; padding: 0; list-style: none; font-size: 15px; }
+    .garanzie li::before { content: "✓ "; color: var(--ok); }
+
+    /* Il disegno tecnico accanto al titolo */
+    .tavola { width: 100%; height: auto; display: block; border: 1px solid var(--linea); background: rgba(6, 27, 64, 0.6); }
+    .tavola .curva { stroke-dasharray: 1; stroke-dashoffset: 1; animation: disegna 2.4s ease-in-out 0.3s forwards; }
+    @keyframes disegna { to { stroke-dashoffset: 0; } }
+    .tavola text { font-family: var(--tecnico); }
+
+    /* ---------- sezioni ---------- */
+    section { padding: 64px 0; }
+    .titolo-sezione { margin-bottom: 30px; }
+    .titolo-sezione h2 { font-size: clamp(26px, 3.5vw, 34px); margin-top: 8px; }
+    .quota { display: flex; align-items: center; max-width: 280px; margin-top: 14px; color: var(--linea); }
+    .quota::before, .quota::after { content: ""; width: 1px; height: 12px; background: currentColor; }
+    .quota span { flex: 1; height: 1px; background: currentColor; }
+
+    .pannello {
+      position: relative;
+      background: rgba(8, 38, 89, 0.85);
+      border: 1px solid var(--linea-tenue);
+      padding: 24px;
+    }
+    /* angoli "a squadra" */
+    .pannello::before, .pannello::after {
+      content: ""; position: absolute; width: 14px; height: 14px; border: 0 solid var(--bianco);
+    }
+    .pannello::before { top: -1px; left: -1px; border-top-width: 2px; border-left-width: 2px; }
+    .pannello::after { bottom: -1px; right: -1px; border-bottom-width: 2px; border-right-width: 2px; }
+
+    .funzioni { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    .funzione h3 { font-size: 16px; text-transform: uppercase; letter-spacing: 0.08em; margin: 14px 0 8px; }
+    .funzione p { margin: 0; color: var(--azzurrino); font-size: 16px; }
+    .simbolo {
+      display: grid; place-items: center; width: 54px; height: 54px;
+      border: 1.5px solid var(--accento); border-radius: 50%;
+      color: var(--accento); font: 600 18px var(--tecnico);
+    }
+
+    /* Esempio di passaggio con citazione */
+    .esempio { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+    .passaggio { border-left: 2px solid var(--accento); padding: 4px 0 4px 18px; margin-bottom: 20px; }
+    .passaggio small { font: 12px var(--tecnico); color: var(--accento); letter-spacing: 0.1em; }
+    .passaggio h3 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; margin: 2px 0 6px; }
+    .passaggio p { margin: 0 0 8px; }
+    .formula { font: 18px/1.5 "Cambria Math", "Times New Roman", serif; text-align: center; padding: 6px 0; }
+    .fonte { font-size: 14px; color: var(--azzurrino); }
+    .avviso { font-size: 14px; color: var(--accento); border: 1px dashed var(--accento); padding: 7px 10px; }
+    .timbro {
+      display: inline-block; transform: rotate(-3deg);
+      border: 1.5px solid var(--ok); color: var(--ok);
+      font: 12px var(--tecnico); letter-spacing: 0.12em; text-transform: uppercase; padding: 5px 10px;
+    }
+
+    /* Istruzioni */
+    .passi { counter-reset: passo; list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
+    .passi li { counter-increment: passo; display: grid; grid-template-columns: 56px 1fr; gap: 16px; }
+    .passi li::before {
+      content: counter(passo, decimal-leading-zero);
+      font: 600 22px var(--tecnico); color: var(--accento);
+      border-right: 1px dashed var(--linea); padding-top: 2px;
+    }
+    .passi h3 { font-size: 16px; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .passi p { margin: 0; color: var(--azzurrino); }
+    .passi strong { color: var(--bianco); font-weight: 500; }
+
+    .requisiti { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+    .requisiti li { display: flex; justify-content: space-between; gap: 16px; border-bottom: 1px dashed var(--linea-tenue); padding-bottom: 8px; }
+    .requisiti span:first-child { font: 13px var(--tecnico); letter-spacing: 0.08em; text-transform: uppercase; color: var(--azzurrino); }
+    .requisiti span:last-child { text-align: right; }
+    .colonne { display: grid; grid-template-columns: 1.4fr 1fr; gap: 22px; align-items: start; }
+
+    /* Domande frequenti */
+    details { border-bottom: 1px dashed var(--linea); padding: 14px 0; }
+    summary { cursor: pointer; font: 500 16px var(--tecnico); letter-spacing: 0.02em; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: var(--accento); font-size: 20px; line-height: 1; }
+    details[open] summary::after { content: "−"; }
+    details p { color: var(--azzurrino); margin: 10px 0 0; }
+
+    /* Cartiglio in fondo alla pagina */
+    footer { padding: 40px 0 56px; }
+    footer .contenitore { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
+    footer p { margin: 0; color: var(--azzurrino); font-size: 14px; }
+    .cartiglio { display: grid; grid-template-columns: auto auto; border: 1.5px solid var(--bianco); background: var(--blu-profondo); font: 12px var(--tecnico); }
+    .cartiglio div { padding: 6px 14px; border: 0.5px solid var(--linea); }
+    .cartiglio .larga { grid-column: 1 / -1; }
+    .cartiglio small { display: block; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--azzurrino); }
+
+    /* ---------- schermi stretti ---------- */
+    @media (max-width: 880px) {
+      .apertura .contenitore, .esempio, .colonne { grid-template-columns: 1fr; }
+      .funzioni { grid-template-columns: 1fr 1fr; }
+      .apertura { padding-top: 44px; }
+    }
+    @media (max-width: 600px) {
+      .contenitore { padding: 0 16px; }
+      .menu { display: none; }
+      .funzioni { grid-template-columns: 1fr; }
+      section { padding: 44px 0; }
+      .scarica { width: 100%; justify-content: center; }
+      .requisiti li { flex-direction: column; gap: 2px; }
+      .requisiti span:last-child { text-align: left; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; }
+      .tavola .curva { stroke-dashoffset: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header class="testata">
+    <div class="contenitore">
+      <a class="logo" href="#"><img src="favicon.svg" alt="" />BLUEPRINT</a>
+      <nav class="menu" aria-label="Sezioni">
+        <a href="#funzioni">Funzioni</a>
+        <a href="#installazione">Installazione</a>
+        <a href="#domande">Domande</a>
+        <a class="link-github" href="https://github.com/basilegiovanni007-pixel/blueprint-analisi">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- ================= APERTURA ================= -->
+    <div class="apertura">
+      <div class="contenitore">
+        <div>
+          <div class="etichetta">Analisi Matematica I e II</div>
+          <h1>Gli esercizi risolti <em>con i tuoi appunti</em>.</h1>
+          <p class="sotto">
+            Blueprint risolve limiti, derivate, integrali, serie, equazioni differenziali ed esercizi di
+            Analisi II, e spiega ogni passaggio citando le pagine dei tuoi appunti e del materiale del professore.
+          </p>
+          <a class="scarica" id="scarica" href="#installazione">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12 M6 11l6 6 6-6 M4 21h16" /></svg>
+            Scarica per Windows
+          </a>
+          <div class="dettagli-scarica" id="dettagli-scarica"><span>Gratis</span><span>Windows 10 e 11 (64 bit)</span></div>
+          <ul class="garanzie">
+            <li>Gratuito, senza abbonamenti</li>
+            <li>I tuoi appunti restano sul tuo computer</li>
+            <li>Risultati verificati</li>
+          </ul>
+        </div>
+
+        <!-- Disegno tecnico: grafico di una funzione con quote e cartiglio -->
+        <svg class="tavola" viewBox="0 0 480 360" role="img" aria-label="Disegno di un grafico di funzione in stile progetto tecnico">
+          <g stroke="rgba(200,222,255,0.18)" stroke-dasharray="3 5">
+            <line x1="80" y1="20" x2="80" y2="300" /><line x1="160" y1="20" x2="160" y2="300" />
+            <line x1="320" y1="20" x2="320" y2="300" /><line x1="400" y1="20" x2="400" y2="300" />
+            <line x1="20" y1="80" x2="460" y2="80" /><line x1="20" y1="240" x2="460" y2="240" />
+          </g>
+          <line x1="20" y1="160" x2="460" y2="160" stroke="#f4f8ff" stroke-width="1.3" />
+          <line x1="240" y1="20" x2="240" y2="300" stroke="#f4f8ff" stroke-width="1.3" />
+          <text x="448" y="150" fill="#a9c8f5" font-size="12">x</text>
+          <text x="248" y="32" fill="#a9c8f5" font-size="12">y</text>
+          <!-- y = x³ − 3x -->
+          <path class="curva" pathLength="1" fill="none" stroke="#ffd866" stroke-width="2.6" stroke-linecap="round"
+            d="M78 300 C 120 120, 160 80, 180 80 S 225 120, 240 160 S 280 240, 300 240 S 360 200, 402 20" />
+          <circle cx="180" cy="80" r="5" fill="#ffd866" stroke="#061b40" stroke-width="2" />
+          <circle cx="300" cy="240" r="5" fill="#ffd866" stroke="#061b40" stroke-width="2" />
+          <circle cx="240" cy="160" r="5" fill="#061b40" stroke="#f4f8ff" stroke-width="2" />
+          <text x="166" y="66" fill="#f4f8ff" font-size="12">max</text>
+          <text x="288" y="262" fill="#f4f8ff" font-size="12">min</text>
+          <text x="250" y="152" fill="#f4f8ff" font-size="12">flesso</text>
+          <!-- quota orizzontale tra massimo e minimo -->
+          <g stroke="#a9c8f5" fill="#a9c8f5">
+            <line x1="180" y1="318" x2="300" y2="318" />
+            <line x1="180" y1="311" x2="180" y2="325" /><line x1="300" y1="311" x2="300" y2="325" />
+            <path d="M180 318 l7 -3.5 v7 z M300 318 l-7 -3.5 v7 z" stroke="none" />
+          </g>
+          <text x="240" y="340" fill="#a9c8f5" font-size="11" text-anchor="middle">Δx = 2</text>
+          <!-- cartiglio -->
+          <g font-size="9" fill="#f4f8ff">
+            <rect x="344" y="300" width="128" height="52" fill="#061b40" stroke="#f4f8ff" stroke-width="1.2" />
+            <line x1="344" y1="326" x2="472" y2="326" stroke="rgba(200,222,255,0.45)" />
+            <text x="350" y="311" fill="#a9c8f5" font-size="7">TAVOLA</text>
+            <text x="350" y="321">Studio di funzione</text>
+            <text x="350" y="337" fill="#a9c8f5" font-size="7">ARGOMENTO</text>
+            <text x="350" y="347">Derivate</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ================= FUNZIONI ================= -->
+    <section id="funzioni">
+      <div class="contenitore">
+        <div class="titolo-sezione">
+          <div class="etichetta">Tavola 01 · Funzioni</div>
+          <h2>Cosa fa Blueprint</h2>
+          <div class="quota" aria-hidden="true"><span></span></div>
+        </div>
+        <div class="funzioni">
+          <article class="pannello funzione">
+            <div class="simbolo">▤</div>
+            <h3>Il tuo Magazzino</h3>
+            <p>Carichi appunti e materiale del prof (PDF, Word, testo, LaTeX). Blueprint li divide in definizioni, teoremi, metodi ed esempi e li rende ricercabili.</p>
+          </article>
+          <article class="pannello funzione">
+            <div class="simbolo">∫</div>
+            <h3>Soluzioni passo passo</h3>
+            <p>Limiti, derivate, integrali, serie, equazioni differenziali, gradiente, punti critici, Lagrange, integrali doppi. Ogni passaggio cita la sua fonte.</p>
+          </article>
+          <article class="pannello funzione">
+            <div class="simbolo">✓</div>
+            <h3>Risultati verificati</h3>
+            <p>Ogni risultato viene ricontrollato con un secondo metodo (SymPy). Se qualcosa non torna, l'app non lo mostra come corretto.</p>
+          </article>
+          <article class="pannello funzione">
+            <div class="simbolo">∇</div>
+            <h3>Grafici interattivi</h3>
+            <p>Studio di funzione animato, tangente, somme di Riemann, polinomi di Taylor, superfici 3D con curve di livello e gradiente.</p>
+          </article>
+          <article class="pannello funzione">
+            <div class="simbolo">?</div>
+            <h3>Mettimi alla prova</h3>
+            <p>Un passo alla volta, solo un suggerimento, oppure rispondi tu e l'app ti dice se è giusto. Ogni esercizio finisce nello Storico ed esce in PDF.</p>
+          </article>
+          <article class="pannello funzione">
+            <div class="simbolo">7g</div>
+            <h3>Progressi e traguardi</h3>
+            <p>Giorni di studio di fila, calendario delle ultime settimane e traguardi come «10 esercizi di Integrali».</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ESEMPIO ================= -->
+    <section>
+      <div class="contenitore">
+        <div class="titolo-sezione">
+          <div class="etichetta">Tavola 02 · Un esempio</div>
+          <h2>Usa solo quello che hai studiato</h2>
+          <div class="quota" aria-hidden="true"><span></span></div>
+        </div>
+        <div class="esempio">
+          <div class="pannello">
+            <div class="passaggio">
+              <small>03</small>
+              <h3>Applichiamo de l'Hôpital</h3>
+              <p>Deriviamo separatamente numeratore e denominatore.</p>
+              <div class="formula">lim<sub>x→0</sub> sin x ⁄ x = lim<sub>x→0</sub> cos x ⁄ 1</div>
+              <div class="fonte">📎 Appunti miei, teorema di de l'Hôpital, p. 3</div>
+            </div>
+            <div class="passaggio">
+              <small>04</small>
+              <h3>Calcoliamo il nuovo limite</h3>
+              <div class="formula">lim<sub>x→0</sub> cos x = 1</div>
+              <div class="avviso">⚠ Questo passaggio richiede: continuità, che non è ancora nei tuoi appunti.</div>
+            </div>
+            <span class="timbro">✓ Verificato con SymPy</span>
+          </div>
+          <div>
+            <p>
+              Ogni passaggio è collegato al blocco dei tuoi appunti da cui viene: clicchi la citazione e si apre il
+              documento originale, alla pagina giusta.
+            </p>
+            <p>
+              Se un passaggio richiede qualcosa che <strong>non</strong> hai ancora caricato, Blueprint non lo usa di
+              nascosto: te lo dice. E se conosci un'altra strada (per esempio i limiti notevoli invece di de
+              l'Hôpital), sceglie quella.
+            </p>
+            <p>
+              Tutto succede sul tuo computer: niente account, niente intelligenza artificiale a pagamento, nessun
+              appunto caricato su internet.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= INSTALLAZIONE ================= -->
+    <section id="installazione">
+      <div class="contenitore">
+        <div class="titolo-sezione">
+          <div class="etichetta">Tavola 03 · Installazione</div>
+          <h2>Installarlo in quattro passi</h2>
+          <div class="quota" aria-hidden="true"><span></span></div>
+        </div>
+        <div class="colonne">
+          <ol class="passi pannello">
+            <li>
+              <div>
+                <h3>Scarica l'installer</h3>
+                <p>Premi <a class="link-scarica" href="#">Scarica per Windows</a>: arriva il file <strong>Blueprint-Setup.exe</strong>.</p>
+              </div>
+            </li>
+            <li>
+              <div>
+                <h3>Avvialo</h3>
+                <p>
+                  Windows potrebbe mostrare <strong>«PC protetto da Windows»</strong>, perché Blueprint è un programma
+                  gratuito senza firma digitale a pagamento. Premi <strong>Ulteriori informazioni</strong> e poi
+                  <strong>Esegui comunque</strong>.
+                </p>
+              </div>
+            </li>
+            <li>
+              <div>
+                <h3>Segui la procedura</h3>
+                <p>Avanti, Avanti, Installa. Non servono i permessi di amministratore, né Python né altri programmi.</p>
+              </div>
+            </li>
+            <li>
+              <div>
+                <h3>Primo avvio</h3>
+                <p>
+                  Si apre una finestra nera (lasciala aperta: chiudendola si spegne l'app) e Blueprint compare nel
+                  browser. La prima volta scarica il modello per la ricerca negli appunti (circa 220 MB): serve
+                  internet solo quella volta.
+                </p>
+              </div>
+            </li>
+          </ol>
+          <div class="pannello">
+            <h3 style="font-size:15px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Requisiti</h3>
+            <ul class="requisiti">
+              <li><span>Sistema</span><span>Windows 10 o 11, 64 bit</span></li>
+              <li><span>Spazio</span><span>circa 1,5 GB</span></li>
+              <li><span>Internet</span><span>solo al primo avvio</span></li>
+              <li><span>Browser</span><span>Edge, Chrome o Firefox</span></li>
+              <li><span>Costo</span><span>gratis</span></li>
+            </ul>
+            <p style="font-size:14px;color:var(--azzurrino);margin:16px 0 0">
+              Su Mac o Linux puoi avviarlo dal codice sorgente: le istruzioni sono nel
+              <a class="link-readme" href="#">README su GitHub</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= DOMANDE ================= -->
+    <section id="domande">
+      <div class="contenitore">
+        <div class="titolo-sezione">
+          <div class="etichetta">Tavola 04 · Domande</div>
+          <h2>Domande frequenti</h2>
+          <div class="quota" aria-hidden="true"><span></span></div>
+        </div>
+        <div class="pannello">
+          <details>
+            <summary>È davvero gratis?</summary>
+            <p>Sì. Non ci sono abbonamenti, pubblicità o versioni a pagamento, e il codice è pubblico con licenza MIT.</p>
+          </details>
+          <details>
+            <summary>Dove finiscono i miei appunti?</summary>
+            <p>
+              Restano sul tuo computer, nella cartella <code>%LOCALAPPDATA%\Blueprint</code>. Blueprint non ha un
+              server online e non invia i tuoi documenti da nessuna parte.
+            </p>
+          </details>
+          <details>
+            <summary>Funziona senza internet?</summary>
+            <p>Sì, dopo il primo avvio: internet serve solo per scaricare una volta il modello per la ricerca negli appunti.</p>
+          </details>
+          <details>
+            <summary>Legge le foto degli appunti scritti a mano?</summary>
+            <p>Non ancora: per ora servono PDF con testo selezionabile, file Word, .txt, .md o .tex. Le scansioni vengono rifiutate con un messaggio chiaro.</p>
+          </details>
+          <details>
+            <summary>Che esercizi sa risolvere?</summary>
+            <p>
+              Limiti, derivate, integrali (anche definiti e impropri), serie numeriche, equazioni differenziali del
+              primo e del secondo ordine (anche problemi di Cauchy), gradiente, punti critici, massimi e minimi
+              vincolati, integrali doppi. Gli esercizi si scrivono a parole o in LaTeX, oppure si leggono da un file.
+            </p>
+          </details>
+          <details>
+            <summary>Come lo aggiorno o lo disinstallo?</summary>
+            <p>
+              Per aggiornarlo scarica di nuovo l'installer da questa pagina e avvialo: i tuoi dati restano. Per
+              disinstallarlo usa «Disinstalla Blueprint» nel menu Start (anche qui i tuoi dati non vengono cancellati).
+            </p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="contenitore">
+      <div>
+        <p>Blueprint è un progetto open source, licenza MIT.</p>
+        <p><a class="link-github" href="https://github.com/basilegiovanni007-pixel/blueprint-analisi">Codice sorgente su GitHub</a></p>
+      </div>
+      <div class="cartiglio" aria-label="Cartiglio">
+        <div class="larga"><small>Tavola</small>Blueprint · Risolutore di Analisi</div>
+        <div><small>Versione</small><span id="versione">1.0.0</span></div>
+        <div><small>Licenza</small>MIT</div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Indirizzi del progetto su GitHub. Sul sito pubblicato (utente.github.io/repository)
+    // li ricaviamo dall'indirizzo della pagina; altrimenti valgono i valori scritti qui.
+    const PREDEFINITO = { utente: "basilegiovanni007-pixel", repository: "blueprint-analisi" };
+    const daIndirizzo = location.hostname.endsWith(".github.io")
+      ? { utente: location.hostname.split(".")[0], repository: location.pathname.split("/")[1] || PREDEFINITO.repository }
+      : PREDEFINITO;
+    const progetto = `https://github.com/${daIndirizzo.utente}/${daIndirizzo.repository}`;
+    // "releases/latest/download" punta sempre all'ultima versione pubblicata
+    const download = `${progetto}/releases/latest/download/Blueprint-Setup.exe`;
+
+    document.querySelectorAll("#scarica, .link-scarica").forEach((a) => (a.href = download));
+    document.querySelectorAll(".link-github").forEach((a) => (a.href = progetto));
+    document.querySelectorAll(".link-readme").forEach((a) => (a.href = `${progetto}#readme`));
+
+    // Versione e dimensione dell'ultima release, chieste a GitHub (se non risponde, resta il testo predefinito)
+    fetch(`https://api.github.com/repos/${daIndirizzo.utente}/${daIndirizzo.repository}/releases/latest`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((release) => {
+        const file = release.assets.find((a) => a.name === "Blueprint-Setup.exe");
+        const versione = release.tag_name.replace(/^v/, "");
+        document.getElementById("versione").textContent = versione;
+        const dettagli = document.getElementById("dettagli-scarica");
+        dettagli.innerHTML = "";
+        [
+          `Versione ${versione}`,
+          file ? `${Math.round(file.size / 1048576)} MB` : null,
+          "Windows 10 e 11 (64 bit)",
+          "Gratis",
+        ]
+          .filter(Boolean)
+          .forEach((testo) => {
+            const span = document.createElement("span");
+            span.textContent = testo;
+            dettagli.appendChild(span);
+          });
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+# Librerie Python usate dal backend.
+# Si installano con:  pip install -r requirements.txt
+# NOTA: serve Python 3.13 (le librerie di ricerca non esistono ancora per il 3.15).
+
+# --- Server ---
+fastapi            # il "server": riceve le richieste del frontend e risponde
+uvicorn            # il programma che tiene acceso il server FastAPI
+python-multipart   # permette a FastAPI di ricevere file caricati
+
+# --- Calcolo ---
+sympy              # calcolo simbolico: limiti, derivate, integrali...
+
+# --- Magazzino ---
+sqlmodel           # database SQLite: elenco dei documenti e dei blocchi
+pymupdf            # legge il testo dei PDF
+python-docx        # legge i file Word (.docx)
+chromadb           # database vettoriale: ricerca "per significato"
+fastembed          # trasforma il testo in vettori (embedding), funziona in italiano
+
+# --- Test ---
+pytest             # esegue i test automatici
+httpx              # serve a pytest per "fingere" le richieste al server
+
+# --- Analisi II ---
+numpy              # calcolo numerico su griglie (verifica dei massimi e minimi vincolati)

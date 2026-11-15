@@ -1,0 +1,14 @@
+# File che NON devono mai finire su git
+.env
+.claude/
+dati/
+backend/.venv/
+__pycache__/
+.pytest_cache/
+frontend/node_modules/
+frontend/dist/
+
+# File creati da crea_installer.ps1 (l'installer si pubblica nelle Release di GitHub, non nel codice)
+installer/build/
+installer/Output/
+installer/blueprint.png
