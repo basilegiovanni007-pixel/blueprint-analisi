@@ -46,8 +46,10 @@ TIPI_BLOCCO = ["definizione", "teorema", "metodo", "esempio", "esercizio svolto"
 TIPI_PER_COPERTURA = [t for t in TIPI_BLOCCO if t != "altro"]
 
 # Formati di file accettati e dimensione massima
-ESTENSIONI_ACCETTATE = {".pdf", ".txt", ".md", ".tex", ".docx"}
-ESTENSIONI_IMMAGINE = {".png", ".jpg", ".jpeg", ".heic", ".webp"}
+ESTENSIONI_TESTO = {".pdf", ".txt", ".md", ".tex", ".docx"}
+# Foto e scansioni: il testo viene riconosciuto con l'OCR (vedi magazzino/ocr.py)
+ESTENSIONI_IMMAGINE = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff", ".heic", ".heif"}
+ESTENSIONI_ACCETTATE = ESTENSIONI_TESTO | ESTENSIONI_IMMAGINE
 DIMENSIONE_MASSIMA = 50 * 1024 * 1024  # 50 MB
 
 

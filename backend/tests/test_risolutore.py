@@ -319,5 +319,6 @@ def test_esercizi_da_file(client):
     assert singolo["esercizi"] == [{"numero": 1, "testo": "derivata di x^3"}]
 
     # Foto e formati sconosciuti: errore chiaro
-    assert client.post("/api/risolutore/da-file", files={"file": ("foto.png", b"\x89PNG")}).status_code == 415
+    # Foto rovinata: errore chiaro (le foto vere sono provate in test_ocr.py)
+    assert client.post("/api/risolutore/da-file", files={"file": ("foto.png", b"\x89PNG")}).status_code == 422
     assert client.post("/api/risolutore/da-file", files={"file": ("x.zip", b"PK")}).status_code == 415

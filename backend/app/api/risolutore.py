@@ -14,6 +14,7 @@ from app.api.progressi import registra
 from app.api.storico import salva_nello_storico
 from app.db.sessione import apri_sessione
 from app.magazzino.estrazione import FileIlleggibile
+from app.magazzino.ocr import OcrNonDisponibile
 from app.risolutore.citazioni import Biblioteca
 from app.risolutore.da_file import leggi_esercizi
 from app.risolutore.interpreta import interpreta
@@ -52,13 +53,6 @@ def esercizi_da_file(file: UploadFile = File(...)) -> dict:
     nome = Path(file.filename or "esercizi").name
     estensione = Path(nome).suffix.lower()
 
-    if estensione in config.ESTENSIONI_IMMAGINE:
-        raise HTTPException(
-            status_code=415,
-            detail="Non riesco ancora a leggere le foto: per riconoscere le formule in un'immagine serve "
-            "un sistema di lettura (OCR) che in questa versione gratuita non c'è. "
-            "Scrivi l'esercizio a mano nel riquadro qui sopra.",
-        )
     if estensione not in config.ESTENSIONI_ACCETTATE:
         accettate = ", ".join(sorted(config.ESTENSIONI_ACCETTATE))
         raise HTTPException(status_code=415, detail=f"Formato {estensione or 'sconosciuto'} non supportato. Formati accettati: {accettate}.")
@@ -70,7 +64,10 @@ def esercizi_da_file(file: UploadFile = File(...)) -> dict:
         raise HTTPException(status_code=413, detail="Il file supera i 50 MB.")
 
     try:
-        esercizi = leggi_esercizi(nome, contenuto)
+        esercizi, letto_con_ocr = leggi_esercizi(nome, contenuto)
     except FileIlleggibile as errore:
         raise HTTPException(status_code=422, detail=str(errore))
-    return {"nome_file": nome, "esercizi": esercizi}
+    except OcrNonDisponibile as errore:
+        raise HTTPException(status_code=503, detail=str(errore))
+    # letto_con_ocr: il testo viene da una foto, quindi le formule vanno ricontrollate prima di risolvere
+    return {"nome_file": nome, "esercizi": esercizi, "letto_con_ocr": letto_con_ocr}

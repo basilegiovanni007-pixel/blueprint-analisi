@@ -46,6 +46,7 @@ export default function Risolutore() {
   const [tipo, setTipo] = useState("auto");
   const [soluzione, setSoluzione] = useState<Soluzione | null>(null);
   const [testoRisolto, setTestoRisolto] = useState("");
+  const [daFoto, setDaFoto] = useState(false); // il testo nel riquadro viene da una foto?
   const [errore, setErrore] = useState("");
   const [inCorso, setInCorso] = useState(false);
 
@@ -59,6 +60,7 @@ export default function Risolutore() {
     try {
       setSoluzione(await risolvi(esercizio, tipoScelto));
       setTestoRisolto(esercizio); // il testo può cambiare dopo: teniamo quello davvero risolto
+      setDaFoto(false); // risolto: l'avviso sul testo letto dalla foto non serve più
     } catch (e) {
       setErrore((e as Error).message);
     }
@@ -68,7 +70,18 @@ export default function Risolutore() {
   function usa(esercizio: string) {
     setTesto(esercizio);
     setTipo("auto");
+    setDaFoto(false);
     avvia(esercizio, "auto");
+  }
+
+  // Esercizio letto da una foto: lo mettiamo nel riquadro, da controllare prima di risolvere
+  function daControllare(esercizio: string) {
+    setTesto(esercizio);
+    setTipo("auto");
+    setSoluzione(null);
+    setErrore("");
+    setDaFoto(true);
+    window.scrollTo({ top: 0, behavior: "smooth" }); // il riquadro dell'esercizio è in alto
   }
 
   return (
@@ -92,6 +105,12 @@ export default function Risolutore() {
             placeholder="Scrivi a parole o in LaTeX. Esempio: limite per x che tende a 0 di sin(x)/x"
             aria-label="Testo dell'esercizio"
           />
+          {daFoto && (
+            <p className="messaggio-avviso" style={{ margin: "12px 0 0" }}>
+              Esercizio letto da una foto: controlla che formule e numeri siano giusti (per esempio x^2, sin(x),
+              frazioni) e correggili qui sopra, poi premi Risolvi.
+            </p>
+          )}
           <div className="riga-azioni">
             <button className="bottone" onClick={() => avvia()} disabled={inCorso || !testo.trim()}>
               {inCorso ? "Risolvo…" : "Risolvi"}
@@ -120,7 +139,7 @@ export default function Risolutore() {
         </Pannello>
 
         <Pannello titolo="Oppure risolvi da un file" largo classe="non-stampare">
-          <EserciziDaFile onScelto={usa} />
+          <EserciziDaFile onScelto={usa} onDaControllare={daControllare} />
         </Pannello>
 
         {errore && (

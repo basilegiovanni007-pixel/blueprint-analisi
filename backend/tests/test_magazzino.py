@@ -123,15 +123,16 @@ def test_pdf_con_numeri_di_pagina(client):
 
 
 def test_errori_spiegati_chiaramente(client):
-    # PDF senza testo (come una scansione)
+    # PDF con una pagina bianca (come una scansione illeggibile)
     pdf = pymupdf.open()
     pdf.new_page()
     risposta = carica(client, "scansione.pdf", pdf.tobytes())
     assert risposta.status_code == 422
     assert "scansione" in risposta.json()["detail"]
 
-    # Foto: non ancora supportate
-    assert carica(client, "foto.jpg", b"\xff\xd8\xff").status_code == 415
+    # Foto rovinata (non è davvero un'immagine)
+    rovinata = carica(client, "foto.jpg", b"\xff\xd8\xff")
+    assert rovinata.status_code == 422 and "immagine" in rovinata.json()["detail"]
     # Formato sconosciuto
     assert carica(client, "programma.exe", b"abc").status_code == 415
     # File vuoto

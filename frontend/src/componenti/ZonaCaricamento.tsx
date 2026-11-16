@@ -43,11 +43,16 @@ export default function ZonaCaricamento({ opzioni, onCaricato }: Props) {
     for (const singolo of file) {
       try {
         const documento = await caricaDocumento(singolo, etichette);
-        risultati.push({
-          nome: singolo.name,
-          ok: true,
-          messaggio: `${documento.numero_blocchi} blocchi indicizzati`,
-        });
+        let messaggio = `${documento.numero_blocchi} blocchi indicizzati`;
+        if (documento.ocr) {
+          // Testo letto da foto o scansioni: invitiamo a ricontrollarlo
+          const pagine = documento.ocr.pagine === 1 ? "1 pagina scritta a mano o fotografata" : `${documento.ocr.pagine} pagine scritte a mano o fotografate`;
+          messaggio += ` · ${pagine}: controlla il testo riconosciuto con «Vedi blocchi»`;
+          if (documento.ocr.incerta) {
+            messaggio += " (lettura incerta: diverse parole potrebbero essere sbagliate, correggi almeno titoli, definizioni e teoremi)";
+          }
+        }
+        risultati.push({ nome: singolo.name, ok: true, messaggio });
       } catch (errore) {
         risultati.push({ nome: singolo.name, ok: false, messaggio: (errore as Error).message });
       }
@@ -82,6 +87,7 @@ export default function ZonaCaricamento({ opzioni, onCaricato }: Props) {
         </svg>
         <strong>Trascina qui i tuoi file</strong>
         <span className="nota">oppure clicca per sceglierli · {opzioni.estensioni.join("  ")}</span>
+        <span className="nota">Anche foto e scansioni di appunti scritti a mano: il testo viene riconosciuto in automatico.</span>
         <input
           ref={campoFile}
           type="file"
@@ -123,7 +129,11 @@ export default function ZonaCaricamento({ opzioni, onCaricato }: Props) {
               <button className="bottone" onClick={caricaTutti} disabled={inCorso}>
                 {inCorso ? "Caricamento…" : `Carica ${file.length} file`}
               </button>
-              <span className="nota">Le etichette valgono per tutti i file di questo gruppo.</span>
+              <span className="nota">
+                {inCorso
+                  ? "Le foto e le pagine scansionate richiedono qualche secondo l'una: il testo viene letto sul tuo computer."
+                  : "Le etichette valgono per tutti i file di questo gruppo."}
+              </span>
             </div>
           </motion.div>
         )}

@@ -21,6 +21,7 @@ class Documento(SQLModel, table=True):
     fonte: str  # es. "Appunti miei"
     data: str  # data degli appunti, formato AAAA-MM-GG
     attivo: bool = True  # se False il risolutore ignora questo documento
+    letto_con_ocr: bool = False  # True se il testo viene da foto o scansioni (da ricontrollare)
     # Momento del caricamento, salvato come testo (es. "2026-11-14T19:30:00")
     caricato_il: str = Field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
 

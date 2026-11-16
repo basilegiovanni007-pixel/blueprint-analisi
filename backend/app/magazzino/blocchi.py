@@ -23,11 +23,13 @@ class BloccoGrezzo:
 
 # Parole che, a inizio paragrafo, indicano l'inizio di un nuovo blocco e il suo tipo.
 # L'ordine conta: la prima regola che corrisponde vince.
+# Negli appunti (soprattutto a mano) le intestazioni sono spesso abbreviate: "Teor", "DEF",
+# "Prop.", "Cor.", "OSS/ESEMPIO"... e l'OCR può sbagliare qualche lettera ("Teoreua").
 REGOLE_TIPO: list[tuple[str, str]] = [
     ("esercizio svolto", r"esercizi[oi]\s+svolt[oi]|esercizio|svolgimento|soluzione|\\begin\{(exercise|esercizio)"),
-    ("teorema", r"teorema|lemma|proposizione|corollario|\\begin\{(theorem|teorema|lemma)"),
-    ("definizione", r"definizione|def\.|\\begin\{(definition|definizione)"),
-    ("esempio", r"esempi[oi]|\\begin\{(example|esempio)"),
+    ("teorema", r"teor\w*|thm\b|lemma|prop\.|proposizione|corol\w*|cor\.|\\begin\{(theorem|teorema|lemma)"),
+    ("definizione", r"definiz\w*|def\b|\\begin\{(definition|definizione)"),
+    ("esempio", r"(?:oss\w*\W{0,3})?esemp\w*|es\.(?=\s|$)|\\begin\{(example|esempio)"),
     ("metodo", r"metodo|procedimento|regola|criterio|strategia|come si (calcola|risolve)"),
 ]
 
@@ -76,6 +78,8 @@ def dividi_in_blocchi(paragrafi: list[Paragrafo]) -> list[BloccoGrezzo]:
                 corrente is None
                 or tipo != "altro"
                 or len(corrente.testo) + len(pezzo) > LUNGHEZZA_IDEALE
+                # Una pagina nuova inizia un blocco nuovo: così ogni citazione indica la pagina giusta
+                or (pagina is not None and corrente.pagina is not None and pagina != corrente.pagina)
             )
             if inizia_nuovo:
                 if corrente is not None:

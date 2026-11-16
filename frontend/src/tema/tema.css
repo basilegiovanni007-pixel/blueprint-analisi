@@ -1566,6 +1566,80 @@ input:focus-visible {
   border: 1.5px solid var(--accento);
 }
 
+/* ---------- Testo letto da foto e scansioni (OCR) ---------- */
+
+.etichetta-ocr {
+  border-style: dashed;
+  border-color: var(--accento);
+  color: var(--accento);
+}
+
+.avviso-ocr {
+  margin: 14px 0 0;
+}
+
+/* Foto originale a sinistra (resta in vista scorrendo), blocchi da controllare a destra */
+.revisione {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.revisione-foto {
+  position: sticky;
+  top: 16px;
+  margin-top: 16px;
+  display: block;
+  border: 1px solid var(--linea);
+  background: var(--blu-profondo);
+  cursor: zoom-in;
+}
+
+.revisione-foto img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.blocco .bottone-testo {
+  margin-top: 4px;
+}
+
+.correzione-originale {
+  display: block;
+  margin: 4px 0 10px;
+  border: 1px solid var(--linea);
+  background: #fff; /* le pagine sono fogli bianchi: così si leggono come sulla carta */
+  cursor: zoom-in;
+}
+
+.correzione-originale img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.correzione textarea {
+  min-height: 0;
+  font-family: var(--font-testo);
+  font-size: 14.5px;
+}
+
+.correzione .riga-azioni {
+  margin-top: 8px;
+}
+
+@media (max-width: 900px) {
+  .revisione {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .revisione-foto {
+    position: static;
+  }
+}
+
 /* ---------- Modalità di studio ---------- */
 
 .modi-studio {

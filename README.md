@@ -95,7 +95,10 @@ Limiti di questa versione gratuita (senza intelligenza artificiale):
 - capisce solo le frasi più comuni, del tipo mostrato nella tabella;
 - nei PDF le formule complesse (frazioni, esponenti) spesso vengono estratte male:
   in quel caso l'esercizio compare nel riquadro e puoi correggerlo a mano;
-- le foto e le scansioni non si possono leggere;
+- puoi caricare anche la **foto** di un foglio di esercizi: il testo viene riconosciuto e
+  l'esercizio scelto compare nel riquadro **senza essere risolto subito**, perché le
+  formule scritte a mano vengono spesso lette male (es. `x²` come `x2`): controllale e
+  poi premi Risolvi;
 - per alcuni limiti (es. forme `1^∞`) mostra solo il risultato, senza passaggi.
 
 ### Serie ed equazioni differenziali
@@ -242,8 +245,26 @@ Limiti di questa versione:
 6. **Cerca nel Magazzino** trova i blocchi per significato, non solo per parole uguali.
 7. La **Mappa** mostra per ogni argomento quali tipi di blocco hai già e quali mancano.
 
-Formati accettati: PDF con testo, Word (`.docx`), `.txt`, `.md`, `.tex`.
-Le scansioni e le foto di appunti scritti a mano non sono ancora supportate.
+Formati accettati: PDF (anche scansionati), Word (`.docx`), `.txt`, `.md`, `.tex` e
+foto (`.jpg`, `.png`, `.webp`, `.heic` degli iPhone, `.bmp`, `.tif`).
+
+### Foto e appunti scritti a mano
+
+Le foto e le pagine scansionate non contengono testo "vero", solo pixel: Blueprint lo
+riconosce con l'**OCR** (RapidOCR, con il modello per le lingue con alfabeto latino).
+Tutto avviene sul tuo computer, gratis e senza internet. Nei PDF l'OCR viene usato solo
+sulle pagine scansionate; quelle scritte al computer vengono lette direttamente.
+
+- Ci vogliono un paio di secondi per ogni foto o pagina scansionata.
+- Il documento riceve l'etichetta **letto da foto**. Con **Vedi blocchi** vedi la foto
+  accanto al testo riconosciuto e puoi sistemare ogni blocco con **Correggi**: il
+  risolutore e la ricerca usano subito il testo corretto.
+- Funziona bene con lo stampatello e con la scrittura a mano ordinata; il corsivo molto
+  legato viene letto peggio. **Le formule** (frazioni, esponenti, integrali) spesso
+  vengono lette male: per le citazioni contano soprattutto le parole ("Teorema di de
+  l'Hôpital", "Definizione di limite"), che di solito vengono lette bene.
+- Per foto migliori: foglio dritto e intero nell'inquadratura, buona luce, niente ombre,
+  una pagina per foto.
 
 ## Come è fatta
 
@@ -295,7 +316,7 @@ I test usano una cartella temporanea: non toccano i tuoi documenti.
 | "Backend non raggiungibile" | Controlla che la finestra "Blueprint - backend" sia aperta e senza errori, poi ricarica la pagina. |
 | "Python 3.13 non trovato" / "Node.js non trovato" | Installa il programma mancante dai link sopra, poi riavvia `avvia.bat`. |
 | "Il modello di ricerca non si è caricato" | La prima volta serve internet. Collegati e riavvia l'app. |
-| "In questo PDF non ho trovato testo" | Il PDF è una scansione: per ora servono PDF con testo selezionabile. |
+| "Non sono riuscito a leggere il testo di questa foto o scansione" | Rifai la foto più nitida: foglio dritto e intero, buona luce, senza ombre. |
 | La pagina non si apre | Aspetta qualche secondo e apri a mano <http://localhost:5173>. |
 
 ## Chiave API di Claude

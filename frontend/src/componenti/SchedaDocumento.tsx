@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   eliminaDocumento,
   indirizzoFile,
+  indirizzoPagina,
   leggiDocumento,
   modificaBlocco,
   modificaDocumento,
@@ -21,6 +22,63 @@ type Props = {
   opzioni: Opzioni;
   onCambiato: () => void; // avvisa la pagina di rileggere l'elenco
 };
+
+// Il testo di un blocco, con il pulsante "Correggi" che lo trasforma in un riquadro modificabile
+type PropsTesto = {
+  testo: string;
+  onSalva: (testo: string) => Promise<void>;
+  originale?: string; // indirizzo dell'immagine originale da mostrare mentre si corregge
+};
+
+function TestoBlocco({ testo, onSalva, originale }: PropsTesto) {
+  const [bozza, setBozza] = useState<string | null>(null); // null = non in modifica
+  const [salvataggio, setSalvataggio] = useState(false);
+
+  if (bozza === null) {
+    return (
+      <>
+        <p>{testo}</p>
+        <button className="bottone-testo" onClick={() => setBozza(testo)}>
+          Correggi
+        </button>
+      </>
+    );
+  }
+
+  async function salva() {
+    setSalvataggio(true);
+    await onSalva(bozza!.trim());
+    setSalvataggio(false);
+    setBozza(null);
+  }
+
+  return (
+    <div className="correzione">
+      {/* La pagina originale sopra il testo: così si vede cosa c'era scritto davvero */}
+      {originale && (
+        <a href={originale} target="_blank" rel="noreferrer" className="correzione-originale" title="Apri l'immagine a tutto schermo">
+          <img src={originale} alt="Pagina originale" />
+        </a>
+      )}
+      <textarea
+        className="campo-esercizio"
+        value={bozza}
+        onChange={(e) => setBozza(e.target.value)}
+        rows={Math.min(14, bozza.split("\n").length + 2)}
+        aria-label="Testo del blocco"
+        autoFocus
+      />
+      <div className="riga-azioni">
+        <button className="bottone" onClick={salva} disabled={salvataggio || !bozza.trim() || bozza.trim() === testo}>
+          {salvataggio ? "Salvo…" : "Salva correzione"}
+        </button>
+        <button className="bottone-testo" onClick={() => setBozza(null)} disabled={salvataggio}>
+          Annulla
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function SchedaDocumento({ documento, opzioni, onCambiato }: Props) {
   const [blocchi, setBlocchi] = useState<Blocco[] | null>(null); // null = blocchi chiusi
@@ -77,7 +135,16 @@ export default function SchedaDocumento({ documento, opzioni, onCambiato }: Prop
       onCambiato();
     });
 
+  // Correzione del testo di un blocco (utile soprattutto per il testo letto dalle foto)
+  const correggi = (blocco: Blocco, testo: string) =>
+    prova(async () => {
+      const aggiornato = await modificaBlocco(blocco.id, { testo });
+      setBlocchi((attuali) => attuali?.map((b) => (b.id === blocco.id ? aggiornato : b)) ?? null);
+    });
+
   const dataLeggibile = new Date(documento.data).toLocaleDateString("it-IT");
+  // Il file originale è una foto? Allora la mostriamo accanto ai blocchi, per confrontare
+  const eFoto = /\.(png|jpe?g|webp|bmp|gif)$/i.test(documento.nome_file);
 
   return (
     <motion.article
@@ -96,6 +163,11 @@ export default function SchedaDocumento({ documento, opzioni, onCambiato }: Prop
             <span className="etichetta">{documento.fonte}</span>
             <span className="etichetta">{dataLeggibile}</span>
             <span className="etichetta">{documento.numero_blocchi} blocchi</span>
+            {documento.letto_con_ocr && (
+              <span className="etichetta etichetta-ocr" title="Il testo è stato riconosciuto da una foto o da una scansione">
+                testo riconosciuto
+              </span>
+            )}
           </div>
         </div>
 
@@ -145,6 +217,21 @@ export default function SchedaDocumento({ documento, opzioni, onCambiato }: Prop
         </div>
       )}
 
+      {/* Testo letto da foto o scansioni: invito a controllarlo, con la foto accanto per confronto */}
+      {blocchi && documento.letto_con_ocr && (
+        <p className="messaggio-avviso avviso-ocr">
+          Questo testo è stato riconosciuto automaticamente da pagine scritte a mano o fotografate. Controlla
+          soprattutto titoli, definizioni e teoremi: con «Correggi» vedi la pagina originale e sistemi le parole
+          sbagliate. Ricerca e risolutore usano subito il testo corretto.
+        </p>
+      )}
+
+      <div className={blocchi && eFoto ? "revisione" : undefined}>
+        {blocchi && eFoto && (
+          <a className="revisione-foto" href={indirizzoFile(documento.id)} target="_blank" rel="noreferrer" title="Apri la foto a tutto schermo">
+            <img src={indirizzoFile(documento.id)} alt={`Foto originale: ${documento.titolo}`} loading="lazy" />
+          </a>
+        )}
       <AnimatePresence>
         {blocchi && (
           <motion.ol
@@ -172,12 +259,20 @@ export default function SchedaDocumento({ documento, opzioni, onCambiato }: Prop
                     </a>
                   )}
                 </div>
-                <p>{blocco.testo}</p>
+                <TestoBlocco
+                  testo={blocco.testo}
+                  onSalva={(testo) => correggi(blocco, testo)}
+                  originale={
+                    // Testo letto con l'OCR da un PDF: mostriamo la sua pagina mentre lo si corregge
+                    documento.letto_con_ocr && blocco.pagina ? indirizzoPagina(documento.id, blocco.pagina) : undefined
+                  }
+                />
               </li>
             ))}
           </motion.ol>
         )}
       </AnimatePresence>
+      </div>
     </motion.article>
   );
 }

@@ -10,7 +10,7 @@ import re
 import tempfile
 from pathlib import Path
 
-from app.magazzino.estrazione import estrai_paragrafi
+from app.magazzino.estrazione import estrai
 
 # Inizio di un esercizio: "Esercizio 3", "Es. 3", "Problema 3", "3)", "3.", "(3)" a inizio riga
 INTESTAZIONE = re.compile(
@@ -21,20 +21,24 @@ INTESTAZIONE = re.compile(
 LUNGHEZZA_MASSIMA = 1200  # caratteri mostrati per ogni esercizio
 
 
-def leggi_esercizi(nome_file: str, contenuto: bytes) -> list[dict]:
-    """Restituisce l'elenco degli esercizi trovati nel file: [{numero, testo}, ...]."""
+def leggi_esercizi(nome_file: str, contenuto: bytes) -> tuple[list[dict], bool]:
+    """
+    Restituisce (esercizi, letto_con_ocr): l'elenco degli esercizi trovati nel file,
+    [{numero, testo}, ...], e se il testo viene da una foto o da una scansione.
+    """
     # Salviamo il file in una cartella temporanea solo per il tempo necessario a leggerlo
     with tempfile.TemporaryDirectory() as cartella:
         percorso = Path(cartella) / ("esercizi" + Path(nome_file).suffix.lower())
         percorso.write_bytes(contenuto)
-        paragrafi = estrai_paragrafi(percorso)
+        estrazione = estrai(percorso)
+    paragrafi, ocr = estrazione.paragrafi, estrazione.letto_con_ocr
 
     testo = "\n".join(paragrafo for _, paragrafo in paragrafi)
     inizi = list(INTESTAZIONE.finditer(testo))
 
     # Nessuna intestazione riconosciuta: tutto il file è un unico esercizio
     if not inizi:
-        return [{"numero": 1, "testo": _accorcia(testo)}]
+        return [{"numero": 1, "testo": _accorcia(testo)}], ocr
 
     esercizi = []
     for i, inizio in enumerate(inizi):
@@ -48,7 +52,7 @@ def leggi_esercizi(nome_file: str, contenuto: bytes) -> list[dict]:
     if len(set(numeri)) != len(numeri):
         for posizione, esercizio in enumerate(esercizi, start=1):
             esercizio["numero"] = posizione
-    return esercizi or [{"numero": 1, "testo": _accorcia(testo)}]
+    return (esercizi or [{"numero": 1, "testo": _accorcia(testo)}]), ocr
 
 
 def _accorcia(testo: str) -> str:

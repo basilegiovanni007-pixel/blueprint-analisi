@@ -5,6 +5,7 @@ Una "sessione" è una conversazione aperta con il database: si leggono e scrivon
 dati, poi si chiude. FastAPI ne apre una per ogni richiesta.
 """
 
+from sqlalchemy import Boolean, inspect, text
 from sqlmodel import Session, SQLModel, create_engine
 
 from app import config
@@ -24,6 +25,36 @@ motore = create_engine(
 def crea_tabelle() -> None:
     """Crea le tabelle se non esistono ancora (non cancella nulla)."""
     SQLModel.metadata.create_all(motore)
+    aggiungi_colonne_mancanti(motore)
+
+
+def aggiungi_colonne_mancanti(motore_db) -> list[str]:
+    """
+    Aggiorna un database creato da una versione precedente di Blueprint.
+
+    create_all() crea le tabelle nuove ma non tocca quelle che esistono già: se in una
+    nuova versione una tabella ha una colonna in più (es. documento.letto_con_ocr), qui la
+    aggiungiamo con il suo valore predefinito. I dati già presenti restano intatti.
+    Restituisce l'elenco delle colonne aggiunte.
+    """
+    esistenti = inspect(motore_db)
+    aggiunte = []
+    with motore_db.begin() as connessione:
+        for tabella in SQLModel.metadata.sorted_tables:
+            if not esistenti.has_table(tabella.name):
+                continue
+            presenti = {c["name"] for c in esistenti.get_columns(tabella.name)}
+            for colonna in tabella.columns:
+                if colonna.name in presenti:
+                    continue
+                tipo = colonna.type.compile(dialect=motore_db.dialect)
+                predefinito = colonna.default.arg if colonna.default is not None and not callable(colonna.default.arg) else None
+                if predefinito is None and isinstance(colonna.type, Boolean):
+                    predefinito = False  # i valori sì/no nuovi partono da "no"
+                valore = "" if predefinito is None else f" DEFAULT {int(predefinito) if isinstance(predefinito, bool) else repr(predefinito)}"
+                connessione.execute(text(f'ALTER TABLE "{tabella.name}" ADD COLUMN "{colonna.name}" {tipo}{valore}'))
+                aggiunte.append(f"{tabella.name}.{colonna.name}")
+    return aggiunte
 
 
 def apri_sessione():

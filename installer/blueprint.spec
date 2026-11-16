@@ -24,6 +24,8 @@ for pacchetto in [
     "pymupdf",
     "docx",
     "sympy",
+    "rapidocr",  # OCR di foto e scansioni, con i suoi modelli (scaricati da crea_installer.ps1)
+    "pillow_heif",  # foto HEIC degli iPhone
 ]:
     d, b, h = collect_all(pacchetto)
     datas += d

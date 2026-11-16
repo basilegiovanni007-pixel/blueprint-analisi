@@ -39,8 +39,14 @@ Passo "2/5 Strumenti di impacchettamento (PyInstaller, Pillow)"
 & $python -m pip install --quiet --disable-pip-version-check pyinstaller pillow
 if ($LASTEXITCODE -ne 0) { throw "Installazione di PyInstaller non riuscita." }
 
-Passo "3/5 Icona"
+Passo "3/5 Icona e modelli dell'OCR"
 & $python (Join-Path $PSScriptRoot "crea_icona.py")
+# RapidOCR scarica i suoi modelli la prima volta che legge un testo: lo facciamo adesso,
+# così finiscono dentro l'installer e chi installa Blueprint non deve scaricarli.
+Push-Location (Join-Path $radice "backend")
+& $python -c "from PIL import Image, ImageDraw, ImageFont; import numpy as np; from app.magazzino.ocr import _prepara_motore; img = Image.new('RGB', (420, 90), 'white'); ImageDraw.Draw(img).text((10, 15), 'Prova OCR', fill='black', font=ImageFont.load_default(size=48)); print('Modelli OCR pronti:', _prepara_motore()(np.array(img)).txts)"
+if ($LASTEXITCODE -ne 0) { throw "Non riesco a preparare i modelli dell'OCR (serve internet la prima volta)." }
+Pop-Location
 
 Passo "4/5 Creo Blueprint.exe con PyInstaller (qualche minuto)"
 & $python -m PyInstaller (Join-Path $PSScriptRoot "blueprint.spec") --noconfirm --clean `

@@ -136,7 +136,8 @@ export async function risolvi(testo: string, tipo: string) {
 export function leggiEserciziDaFile(file: File) {
   const pacco = new FormData();
   pacco.append("file", file);
-  return chiedi<{ nome_file: string; esercizi: EsercizioDaFile[] }>("/api/risolutore/da-file", {
+  // letto_con_ocr: gli esercizi vengono da una foto, quindi le formule vanno ricontrollate
+  return chiedi<{ nome_file: string; esercizi: EsercizioDaFile[]; letto_con_ocr: boolean }>("/api/risolutore/da-file", {
     method: "POST",
     body: pacco,
   });
@@ -311,6 +312,9 @@ export type Documento = {
   caricato_il: string;
   numero_blocchi: number;
   blocchi_per_tipo: Record<string, number>;
+  letto_con_ocr: boolean; // il testo viene da foto o scansioni: va ricontrollato
+  // Solo subito dopo il caricamento di foto o scansioni: com'è andata la lettura
+  ocr?: { pagine: number; affidabilita: number | null; incerta: boolean };
 };
 
 export type Blocco = {
@@ -383,3 +387,6 @@ export const leggiMappa = () => chiedi<Mappa>("/api/magazzino/mappa");
 // Indirizzo del file originale; per i PDF si può aprire direttamente alla pagina giusta
 export const indirizzoFile = (id: number, pagina?: number | null) =>
   `/api/magazzino/documenti/${id}/file` + (pagina ? `#page=${pagina}` : "");
+
+// Una pagina di un PDF come immagine (per correggere il testo riconosciuto guardando l'originale)
+export const indirizzoPagina = (id: number, pagina: number) => `/api/magazzino/documenti/${id}/pagina/${pagina}`;

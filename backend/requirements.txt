@@ -16,6 +16,8 @@ pymupdf            # legge il testo dei PDF
 python-docx        # legge i file Word (.docx)
 chromadb           # database vettoriale: ricerca "per significato"
 fastembed          # trasforma il testo in vettori (embedding), funziona in italiano
+rapidocr           # legge il testo nelle foto e nelle scansioni (OCR), senza internet
+pillow-heif        # permette di aprire le foto HEIC degli iPhone
 
 # --- Test ---
 pytest             # esegue i test automatici

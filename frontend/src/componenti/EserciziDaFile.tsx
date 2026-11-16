@@ -7,9 +7,15 @@ import { leggiEserciziDaFile, type EsercizioDaFile } from "../api/client";
 
 type Props = {
   onScelto: (testo: string) => void; // chiamata quando lo studente sceglie un esercizio
+  // Esercizio letto da una foto: va messo nel riquadro per essere controllato prima di risolverlo
+  onDaControllare: (testo: string) => void;
 };
 
-export default function EserciziDaFile({ onScelto }: Props) {
+// Formati accettati: documenti con testo e foto (il testo delle foto viene riconosciuto con l'OCR)
+const FORMATI = ".pdf,.docx,.txt,.md,.tex,.jpg,.jpeg,.png,.webp,.heic";
+
+export default function EserciziDaFile({ onScelto, onDaControllare }: Props) {
+  const [daFoto, setDaFoto] = useState(false); // gli esercizi vengono da una foto?
   const [nomeFile, setNomeFile] = useState("");
   const [esercizi, setEsercizi] = useState<EsercizioDaFile[]>([]);
   const [scelto, setScelto] = useState<number | null>(null);
@@ -29,18 +35,22 @@ export default function EserciziDaFile({ onScelto }: Props) {
       const risposta = await leggiEserciziDaFile(file);
       setNomeFile(risposta.nome_file);
       setEsercizi(risposta.esercizi);
-      // Un solo esercizio nel file: non c'è niente da scegliere, lo risolviamo subito
-      if (risposta.esercizi.length === 1) scegli(risposta.esercizi[0]);
+      setDaFoto(risposta.letto_con_ocr);
+      // Un solo esercizio nel file: non c'è niente da scegliere, lo prendiamo subito
+      if (risposta.esercizi.length === 1) scegli(risposta.esercizi[0], risposta.letto_con_ocr);
     } catch (e) {
       setErrore((e as Error).message);
     }
     setInCorso(false);
   }
 
-  function scegli(esercizio: EsercizioDaFile) {
+  function scegli(esercizio: EsercizioDaFile, foto = daFoto) {
     setScelto(esercizio.numero);
     setErrore("");
-    onScelto(esercizio.testo);
+    // Da una foto le formule possono essere lette male: l'esercizio va prima controllato,
+    // quindi lo mettiamo nel riquadro senza risolverlo subito
+    if (foto) onDaControllare(esercizio.testo);
+    else onScelto(esercizio.testo);
   }
 
   // Lo studente ha scritto qualcosa tipo "il 3" oppure "esercizio 2": cerchiamo il numero
@@ -77,12 +87,12 @@ export default function EserciziDaFile({ onScelto }: Props) {
         }}
       >
         <strong>{inCorso ? "Leggo il file…" : "Trascina qui un file di esercizi"}</strong>
-        <span className="nota">oppure clicca per sceglierlo · .pdf .docx .txt .md .tex</span>
+        <span className="nota">oppure clicca per sceglierlo · .pdf .docx .txt .md .tex · anche una foto del foglio</span>
         <input
           ref={campoFile}
           type="file"
           hidden
-          accept=".pdf,.docx,.txt,.md,.tex"
+          accept={FORMATI}
           onChange={(e) => {
             leggi(e.target.files?.[0]);
             e.target.value = "";
@@ -95,7 +105,8 @@ export default function EserciziDaFile({ onScelto }: Props) {
       {esercizi.length > 1 && (
         <div className="scelta-esercizio">
           <p>
-            In <strong>{nomeFile}</strong> ho trovato {esercizi.length} esercizi. Quale risolvo?
+            In <strong>{nomeFile}</strong> ho trovato {esercizi.length} esercizi.{" "}
+            {daFoto ? "Quale vuoi controllare e risolvere?" : "Quale risolvo?"}
           </p>
           <ul className="elenco-esercizi">
             {esercizi.map((esercizio) => (

@@ -5,12 +5,15 @@ Ogni funzione decorata con @router.get / .post / .patch / .delete è un indirizz
 che il frontend può chiamare.
 """
 
+import re
+import unicodedata
 import uuid
 from datetime import date
 from pathlib import Path
 
+import pymupdf
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -18,7 +21,8 @@ from app import config
 from app.db.modelli import Blocco, Documento
 from app.db.sessione import apri_sessione
 from app.magazzino.blocchi import dividi_in_blocchi
-from app.magazzino.estrazione import FileIlleggibile, estrai_paragrafi
+from app.magazzino.estrazione import FileIlleggibile, estrai
+from app.magazzino.ocr import OcrNonDisponibile
 from app.magazzino.indice import indice
 
 router = APIRouter(prefix="/api/magazzino", tags=["magazzino"])
@@ -76,6 +80,7 @@ def _riassunto(sessione: Session, documento: Documento) -> dict:
         "fonte": documento.fonte,
         "data": documento.data,
         "attivo": documento.attivo,
+        "letto_con_ocr": bool(documento.letto_con_ocr),
         "caricato_il": documento.caricato_il,
         "numero_blocchi": len(blocchi),
         "blocchi_per_tipo": conteggio,
@@ -124,12 +129,6 @@ def carica_documento(
     # 1. Controlli sul file
     nome = Path(file.filename or "documento").name
     estensione = Path(nome).suffix.lower()
-    if estensione in config.ESTENSIONI_IMMAGINE:
-        raise _errore(
-            415,
-            "Le foto non sono ancora supportate: il riconoscimento della scrittura (OCR) "
-            "arriverà più avanti. Per ora carica PDF con testo, Word, .txt, .md o .tex.",
-        )
     if estensione not in config.ESTENSIONI_ACCETTATE:
         accettate = ", ".join(sorted(config.ESTENSIONI_ACCETTATE))
         raise _errore(415, f"Formato {estensione or 'sconosciuto'} non supportato. Formati accettati: {accettate}.")
@@ -166,12 +165,16 @@ def salva_documento(
     percorso = config.CARTELLA_FILE / file_salvato
     percorso.write_bytes(contenuto)
 
-    # 3. Estrazione del testo e divisione in blocchi
+    # 3. Estrazione del testo (con l'OCR per foto e scansioni) e divisione in blocchi
     try:
-        blocchi_grezzi = dividi_in_blocchi(estrai_paragrafi(percorso))
+        estrazione = estrai(percorso)
+        blocchi_grezzi = dividi_in_blocchi(estrazione.paragrafi)
     except FileIlleggibile as errore:
         percorso.unlink(missing_ok=True)
         raise _errore(422, str(errore))
+    except OcrNonDisponibile as errore:
+        percorso.unlink(missing_ok=True)
+        raise _errore(503, f"{errore} Reinstalla Blueprint oppure carica un PDF con testo, Word, .txt, .md o .tex.")
 
     # 4. Salvataggio nel database
     documento = Documento(
@@ -182,6 +185,7 @@ def salva_documento(
         corso=corso,
         fonte=fonte,
         data=data,
+        letto_con_ocr=estrazione.letto_con_ocr,
     )
     sessione.add(documento)
     sessione.commit()
@@ -212,7 +216,15 @@ def salva_documento(
             f"il modello linguistico (circa 220 MB). Dettaglio: {errore}",
         )
 
-    return _riassunto(sessione, documento)
+    riassunto = _riassunto(sessione, documento)
+    # Solo subito dopo il caricamento: com'è andata la lettura di foto e scansioni
+    if estrazione.letto_con_ocr:
+        riassunto["ocr"] = {
+            "pagine": estrazione.pagine_ocr,
+            "affidabilita": estrazione.affidabilita,
+            "incerta": estrazione.lettura_incerta,
+        }
+    return riassunto
 
 
 @router.get("/documenti")
@@ -293,6 +305,24 @@ def apri_file(id_documento: int, sessione: Session = Depends(apri_sessione)) -> 
     return FileResponse(percorso, filename=documento.nome_file, content_disposition_type="inline")
 
 
+@router.get("/documenti/{id_documento}/pagina/{numero}")
+def immagine_pagina(id_documento: int, numero: int, sessione: Session = Depends(apri_sessione)) -> Response:
+    """
+    Una pagina di un PDF come immagine. Serve per correggere il testo riconosciuto
+    con l'OCR guardando la pagina originale accanto.
+    """
+    documento = _trova_documento(sessione, id_documento)
+    percorso = config.CARTELLA_FILE / documento.file_salvato
+    if percorso.suffix.lower() != ".pdf" or not percorso.exists():
+        raise _errore(404, "Per questo documento non ci sono pagine da mostrare.")
+    with pymupdf.open(stream=percorso.read_bytes(), filetype="pdf") as pdf:
+        if not 1 <= numero <= pdf.page_count:
+            raise _errore(404, f"Il documento ha {pdf.page_count} pagine.")
+        immagine = pdf[numero - 1].get_pixmap(dpi=110).tobytes("png")
+    # Le pagine non cambiano: il browser può tenerle in memoria per un po'
+    return Response(immagine, media_type="image/png", headers={"Cache-Control": "max-age=3600"})
+
+
 # ---------- blocchi ----------
 
 
@@ -333,24 +363,62 @@ def modifica_blocco(
 # ---------- ricerca ----------
 
 
+PESO_PAROLE = 0.4  # quanto vale, al massimo, contenere tutte le parole cercate
+
+# Parole troppo comuni per dire qualcosa sul contenuto di un blocco
+PAROLE_VUOTE = {
+    "della", "delle", "dello", "degli", "nella", "nelle", "come", "quando", "dove", "sono", "essere",
+    "questo", "questa", "quale", "quali", "anche", "sulla", "sulle", "dalla", "dalle", "perche", "cosa",
+}  # fmt: skip
+
+
+def _senza_accenti(testo: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", testo) if unicodedata.category(c) != "Mn")
+
+
+def _radici_parole(domanda: str) -> list[str]:
+    """
+    Le parole importanti della domanda, accorciate alla "radice" (es. "convessa" -> "conves"),
+    così "funzione convessa" trova anche "funzioni convesse".
+    """
+    parole = re.findall(r"[a-z]{4,}", _senza_accenti(domanda.lower()))
+    return list(dict.fromkeys(p[: max(5, len(p) - 2)] for p in parole if p not in PAROLE_VUOTE))
+
+
 @router.get("/cerca")
 def cerca(q: str, quanti: int = 8, sessione: Session = Depends(apri_sessione)) -> list[dict]:
-    """Cerca per significato tra i blocchi dei documenti attivi."""
+    """
+    Cerca tra i blocchi dei documenti attivi. La ricerca è "ibrida":
+    - per significato (embedding), che trova anche sinonimi e frasi diverse;
+    - più un bonus ai blocchi che contengono proprio le parole cercate.
+    Il bonus conta molto negli appunti scritti a mano: lì le formule lette male "sporcano"
+    il significato del blocco, mentre le parole giuste (es. "arccos") restano riconoscibili.
+    """
     if not q.strip():
         raise _errore(422, "Scrivi qualcosa da cercare.")
     quanti = max(1, min(quanti, 30))
 
     attivi = {d.id: d for d in sessione.exec(select(Documento).where(Documento.attivo == True))}  # noqa: E712
     try:
-        trovati = indice.cerca(q, quanti, list(attivi))
+        # Prendiamo più candidati del necessario, poi li riordiniamo con il bonus delle parole
+        candidati = indice.cerca(q, max(60, quanti), list(attivi))
     except Exception as errore:
         raise _errore(503, f"La ricerca non è disponibile: {errore}")
 
-    risultati = []
-    for id_blocco, somiglianza in trovati:
+    radici = _radici_parole(q)
+    punteggiati = []
+    for id_blocco, somiglianza in candidati:
         blocco = sessione.get(Blocco, id_blocco)
         if blocco is None:
             continue
+        testo = _senza_accenti(blocco.testo.lower())
+        presenti = sum(1 for radice in radici if radice in testo)
+        bonus = PESO_PAROLE * presenti / len(radici) if radici else 0.0
+        punteggiati.append((round(min(1.0, somiglianza + bonus), 3), blocco))
+    punteggiati.sort(key=lambda coppia: -coppia[0])
+
+    risultati = []
+    for somiglianza, blocco in punteggiati[:quanti]:
         documento = attivi[blocco.documento_id]
         risultati.append(
             {
