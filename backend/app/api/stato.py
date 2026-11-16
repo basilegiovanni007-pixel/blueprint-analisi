@@ -24,7 +24,7 @@ def leggi_stato() -> dict:
 
     return {
         "stato": "ok",
-        "versione_app": "0.2.0",
+        "versione_app": "1.1.0",
         "fase": 2,
         # Stato del modello di ricerca: "in caricamento", "pronto" oppure "errore"
         "ricerca": {"stato": indice.stato, "errore": indice.errore},

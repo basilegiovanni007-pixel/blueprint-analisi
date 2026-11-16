@@ -106,7 +106,7 @@ export default function BarraLaterale() {
       </div>
 
       <SerieGiorni />
-      <div className="barra-piede">v1.0 · Analisi I e II</div>
+      <div className="barra-piede">v1.1 · Analisi I e II</div>
     </nav>
   );
 }

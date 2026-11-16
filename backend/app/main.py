@@ -28,7 +28,7 @@ async def ciclo_di_vita(app: FastAPI):
 
 app = FastAPI(
     title="Blueprint – Risolutore di Analisi I e II",
-    version="0.2.0",
+    version="1.1.0",
     lifespan=ciclo_di_vita,
 )
 
