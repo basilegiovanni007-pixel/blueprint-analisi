@@ -787,6 +787,28 @@ input:focus-visible {
   color: var(--azzurrino);
 }
 
+/* Argomento del blocco (menu a tendina): discreto, evidenziato se diverso da quello del documento */
+.argomento-blocco {
+  font-family: var(--font-tecnico);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding: 3px 6px;
+  border: 1px dashed var(--linea);
+  background: var(--blu-profondo);
+  color: var(--azzurrino);
+  color-scheme: dark;
+  max-width: 100%;
+}
+
+.argomento-blocco.diverso {
+  border: 1px solid var(--accento);
+  color: var(--accento);
+}
+
+.argomenti-trattati {
+  margin: 6px 0 0;
+}
+
 /* ---------- Mappa della conoscenza ---------- */
 
 .mappa-elenco {

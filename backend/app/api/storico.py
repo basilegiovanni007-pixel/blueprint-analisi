@@ -154,6 +154,7 @@ def aggiungi_al_magazzino(id_esercizio: int, sessione: Session = Depends(apri_se
         data=date.today().isoformat(),
         titolo=f"Esercizio svolto: {esercizio.testo[:80]}",
         tipo_blocchi="esercizio svolto",
+        riconosci_argomenti=False,  # l'argomento di un esercizio risolto è già noto
     )
     esercizio.documento_id = documento["id"]
     sessione.add(esercizio)

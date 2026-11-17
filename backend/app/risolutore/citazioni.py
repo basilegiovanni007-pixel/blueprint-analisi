@@ -7,7 +7,7 @@ Per ogni concetto usato in un passaggio cerchiamo nel Magazzino un blocco che ne
 
 La ricerca è "ibrida": il blocco deve contenere almeno una parola chiave del concetto
 (così la citazione è pertinente), e tra i candidati scegliamo il migliore usando il
-tipo di blocco e la ricerca per significato.
+tipo di blocco, l'argomento dell'esercizio e la ricerca per significato.
 """
 
 import unicodedata
@@ -31,7 +31,9 @@ def _normalizza(testo: str) -> str:
 class Biblioteca:
     """Legge una volta i blocchi attivi del Magazzino e risponde alle domande "conosco X?"."""
 
-    def __init__(self, sessione: Session) -> None:
+    def __init__(self, sessione: Session, argomento: str | None = None) -> None:
+        """argomento: quello dell'esercizio (es. "Limiti"); a parità di tipo preferiamo i blocchi che ne parlano."""
+        self._argomento = argomento
         self._documenti = {d.id: d for d in sessione.exec(select(Documento).where(Documento.attivo == True))}  # noqa: E712
         # Gli esercizi svolti dall'app e aggiunti al Magazzino dallo Storico NON valgono come fonte:
         # altrimenti basterebbe risolvere un esercizio una volta perché l'app "imparasse" un metodo
@@ -62,7 +64,12 @@ class Biblioteca:
                 somiglianze = {}
             migliore = min(
                 candidati,
-                key=lambda b: (PRIORITA_TIPO.get(b.tipo, 3), -somiglianze.get(b.id, 0.0), b.id),
+                key=lambda b: (
+                    PRIORITA_TIPO.get(b.tipo, 3),
+                    0 if self._argomento_di(b) == self._argomento else 1,
+                    -somiglianze.get(b.id, 0.0),
+                    b.id,
+                ),
             )
             documento = self._documenti[migliore.documento_id]
             estratto = migliore.testo if len(migliore.testo) <= 280 else migliore.testo[:280].rstrip() + "…"
@@ -78,6 +85,9 @@ class Biblioteca:
 
         self._memoria[chiave] = citazione
         return citazione
+
+    def _argomento_di(self, blocco: Blocco) -> str:
+        return blocco.argomento or self._documenti[blocco.documento_id].argomento
 
     def conosce(self, chiave: str) -> bool:
         return self.cita(chiave) is not None

@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { caricaDocumento, type Etichette, type Opzioni } from "../api/client";
-import CampiEtichette from "./CampiEtichette";
+import CampiEtichette, { AUTOMATICO } from "./CampiEtichette";
 
 type Props = {
   opzioni: Opzioni;
@@ -23,7 +23,7 @@ export default function ZonaCaricamento({ opzioni, onCaricato }: Props) {
   const [inCorso, setInCorso] = useState(false);
   const [esiti, setEsiti] = useState<Esito[]>([]);
   const [etichette, setEtichette] = useState<Etichette>({
-    argomento: Object.values(opzioni.argomenti)[0][0],
+    argomento: AUTOMATICO, // di solito l'app capisce da sola di cosa parlano gli appunti
     fonte: opzioni.fonti[0],
     data: oggi(),
   });
@@ -44,6 +44,9 @@ export default function ZonaCaricamento({ opzioni, onCaricato }: Props) {
       try {
         const documento = await caricaDocumento(singolo, etichette);
         let messaggio = `${documento.numero_blocchi} blocchi indicizzati`;
+        const altri = Object.keys(documento.argomenti_blocchi).filter((a) => a !== documento.argomento);
+        if (documento.argomento_riconosciuto) messaggio += ` · argomento riconosciuto: ${documento.argomento}`;
+        if (altri.length > 0) messaggio += ` · parla anche di ${altri.join(", ")}`;
         if (documento.ocr) {
           // Testo letto da foto o scansioni: invitiamo a ricontrollarlo
           const pagine = documento.ocr.pagine === 1 ? "1 pagina scritta a mano o fotografata" : `${documento.ocr.pagine} pagine scritte a mano o fotografate`;
@@ -124,7 +127,7 @@ export default function ZonaCaricamento({ opzioni, onCaricato }: Props) {
                 </li>
               ))}
             </ul>
-            <CampiEtichette opzioni={opzioni} valori={etichette} onCambia={setEtichette} />
+            <CampiEtichette opzioni={opzioni} valori={etichette} onCambia={setEtichette} conAuto />
             <div className="riga-azioni">
               <button className="bottone" onClick={caricaTutti} disabled={inCorso}>
                 {inCorso ? "Caricamento…" : `Carica ${file.length} file`}
@@ -132,7 +135,9 @@ export default function ZonaCaricamento({ opzioni, onCaricato }: Props) {
               <span className="nota">
                 {inCorso
                   ? "Le foto e le pagine scansionate richiedono qualche secondo l'una: il testo viene letto sul tuo computer."
-                  : "Le etichette valgono per tutti i file di questo gruppo."}
+                  : etichette.argomento === AUTOMATICO
+                    ? "L'argomento viene riconosciuto per ogni file (e per ogni paragrafo): potrai correggerlo da «Vedi blocchi». Fonte e data valgono per tutti i file."
+                    : "Le etichette valgono per tutti i file di questo gruppo; l'argomento di ogni paragrafo viene comunque riconosciuto."}
               </span>
             </div>
           </motion.div>

@@ -47,7 +47,7 @@ def studio(richiesta: RichiestaFunzione, sessione: Session = Depends(apri_sessio
     def lavoro() -> dict:
         f, x = leggi_funzione_di_x(richiesta.testo)
         risultato = studia(f, x)
-        biblioteca = Biblioteca(sessione)
+        biblioteca = Biblioteca(sessione, "Derivate")  # lo studio di funzione è calcolo differenziale
         for tappa in risultato["tappe"]:
             chiave = tappa["concetto"]
             tappa["concetto"] = CONCETTI[chiave].nome if chiave else None

@@ -7,7 +7,8 @@ del professore).
 **Versione 1.0 – tutte e 7 le fasi completate.** Cosa contiene:
 
 - **Magazzino**: carichi appunti e materiale del prof, l'app li divide in blocchi,
-  li indicizza per la ricerca e misura la copertura degli argomenti (Mappa).
+  riconosce di quale argomento parla ogni blocco, li indicizza per la ricerca e misura
+  la copertura degli argomenti (Mappa).
 - **Risolutore**: Analisi I (limiti, derivate, integrali, serie, equazioni
   differenziali) e Analisi II (gradiente, punti critici, massimi e minimi vincolati,
   integrali doppi), con passaggi, citazioni dai tuoi appunti e risultato verificato.
@@ -237,13 +238,35 @@ Limiti di questa versione:
 1. Apri **Magazzino** dalla barra laterale.
 2. Trascina uno o più file nella zona tratteggiata (oppure cliccala). Per una prova
    veloce puoi usare `esempi/appunti-limiti.md`.
-3. Scegli argomento, fonte e data, poi premi **Carica**.
+3. Scegli fonte e data, poi premi **Carica**. L'argomento parte da **Riconosci in
+   automatico**; se preferisci puoi sceglierlo tu.
 4. L'app estrae il testo, lo divide in blocchi e prova a riconoscere il tipo di ogni
-   blocco (definizione, teorema, metodo, esempio, esercizio svolto). Con
-   **Vedi blocchi** puoi correggere il tipo dal menu a tendina.
+   blocco (definizione, teorema, metodo, esempio, esercizio svolto) e il suo argomento.
+   Con **Vedi blocchi** puoi correggere tipo e argomento dai menu a tendina.
 5. Con l'interruttore **Attivo** puoi mettere da parte un documento senza eliminarlo.
 6. **Cerca nel Magazzino** trova i blocchi per significato, non solo per parole uguali.
 7. La **Mappa** mostra per ogni argomento quali tipi di blocco hai già e quali mancano.
+
+### Argomenti riconosciuti in automatico
+
+Ogni blocco riceve un argomento del corso (Limiti, Derivate, Serie...). Per deciderlo
+l'app guarda insieme:
+
+- il **significato** del blocco, con lo stesso modello linguistico della ricerca;
+- le **parole chiave** ("convessa", "gradiente", "Cauchy") e la **notazione** (f'(x),
+  ∫, ∂, y'');
+- il **contesto**: un blocco senza indizi (per esempio solo formule) o in bilico (de
+  l'Hôpital sta sia nei limiti sia nelle derivate) prende l'argomento del documento.
+
+Se un documento parla anche d'altro, la scheda lo dice ("Tratta anche: Serie (1
+blocco)") e nella **Mappa** quel blocco conta per il suo argomento. Nelle citazioni, a
+parità di tipo, l'app preferisce i blocchi sull'argomento dell'esercizio. Tutto avviene
+sul tuo computer. I documenti caricati con le versioni precedenti ricevono gli argomenti
+da soli, al primo avvio.
+
+Il riconoscimento non è infallibile, soprattutto sugli appunti scritti a mano letti
+male: se sbaglia, correggi l'argomento del blocco con **Vedi blocchi**. Se cambi
+l'argomento di un documento, lo seguono i blocchi che avevano quello vecchio.
 
 Formati accettati: PDF (anche scansionati), Word (`.docx`), `.txt`, `.md`, `.tex` e
 foto (`.jpg`, `.png`, `.webp`, `.heic` degli iPhone, `.bmp`, `.tif`).

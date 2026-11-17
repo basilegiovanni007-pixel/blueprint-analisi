@@ -73,3 +73,6 @@ class Blocco(SQLModel, table=True):
     pagina: int | None = None  # pagina del PDF da cui viene (se nota)
     testo: str
     tipo: str = "altro"  # definizione, teorema, metodo, esempio, esercizio svolto, altro
+    # Argomento del blocco (es. "Derivate"), riconosciuto in automatico e correggibile.
+    # None = non ancora assegnato (blocchi creati da Blueprint 1.0/1.1): vale quello del documento
+    argomento: str | None = None

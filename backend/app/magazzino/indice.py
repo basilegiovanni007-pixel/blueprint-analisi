@@ -75,16 +75,29 @@ class Indice:
             self.stato = "pronto"
             self.errore = None
 
-    def prepara_in_sottofondo(self) -> None:
-        """Avvia il caricamento del modello senza bloccare l'avvio del server."""
+    def prepara_in_sottofondo(self, poi=None) -> None:
+        """
+        Avvia il caricamento del modello senza bloccare l'avvio del server.
+        poi: funzione da eseguire quando il modello è pronto (es. lavori di manutenzione).
+        """
 
         def lavoro() -> None:
             try:
                 self._prepara()
             except Exception:
-                pass  # l'errore resta salvato in self.errore e verrà mostrato all'utente
+                return  # l'errore resta salvato in self.errore e verrà mostrato all'utente
+            if poi is not None:
+                try:
+                    poi()
+                except Exception:
+                    pass  # un lavoro di manutenzione fallito non deve fermare l'app
 
         threading.Thread(target=lavoro, daemon=True).start()
+
+    def vettori(self, testi: list[str]) -> list[list[float]]:
+        """Il "significato" (embedding) di una lista di testi."""
+        self._prepara()
+        return self._vettori(testi)
 
     def _vettori(self, testi: list[str]) -> list[list[float]]:
         """Trasforma una lista di testi in una lista di embedding."""

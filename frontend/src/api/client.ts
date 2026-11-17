@@ -312,9 +312,13 @@ export type Documento = {
   caricato_il: string;
   numero_blocchi: number;
   blocchi_per_tipo: Record<string, number>;
+  // Gli argomenti trattati dai blocchi, dal più presente: es. { Derivate: 9, Limiti: 2 }
+  argomenti_blocchi: Record<string, number>;
   letto_con_ocr: boolean; // il testo viene da foto o scansioni: va ricontrollato
   // Solo subito dopo il caricamento di foto o scansioni: com'è andata la lettura
   ocr?: { pagine: number; affidabilita: number | null; incerta: boolean };
+  // Solo subito dopo il caricamento: true se l'argomento è stato riconosciuto dall'app
+  argomento_riconosciuto?: boolean;
 };
 
 export type Blocco = {
@@ -323,6 +327,7 @@ export type Blocco = {
   pagina: number | null;
   testo: string;
   tipo: string;
+  argomento: string; // riconosciuto in automatico, correggibile
 };
 
 export type DocumentoConBlocchi = Documento & { blocchi: Blocco[] };
@@ -372,7 +377,7 @@ export const modificaDocumento = (id: number, modifica: Partial<Etichette & { at
 export const eliminaDocumento = (id: number) =>
   chiedi<void>(`/api/magazzino/documenti/${id}`, { method: "DELETE" });
 
-export const modificaBlocco = (id: number, modifica: { tipo?: string; testo?: string }) =>
+export const modificaBlocco = (id: number, modifica: { tipo?: string; testo?: string; argomento?: string }) =>
   chiedi<Blocco>(`/api/magazzino/blocchi/${id}`, {
     method: "PATCH",
     headers: JSON_HEADERS,

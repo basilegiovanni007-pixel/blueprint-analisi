@@ -38,7 +38,7 @@ function RigaArgomento({ voce }: { voce: VoceMappa }) {
       <p className="nota">
         {voce.documenti === 0
           ? "Nessun documento"
-          : `${voce.documenti} ${voce.documenti === 1 ? "documento" : "documenti"} · ${voce.blocchi} blocchi`}
+          : `${voce.documenti} ${voce.documenti === 1 ? "documento" : "documenti"} · ${voce.blocchi} ${voce.blocchi === 1 ? "blocco" : "blocchi"}`}
         {voce.documenti > 0 && voce.tipi_mancanti.length > 0 && <> · manca: {voce.tipi_mancanti.join(", ")}</>}
         {voce.copertura === 1 && <> · completo ✓</>}
       </p>
@@ -80,8 +80,10 @@ export default function Mappa() {
         <Pannello titolo="Come si legge" largo>
           <p className="nota">
             Un argomento è coperto al 100% quando nel Magazzino ci sono tutti e cinque i tipi di blocco:
-            definizione, teorema, metodo, esempio ed esercizio svolto. Se un tipo è stato riconosciuto male,
-            puoi correggerlo dal <Link to="/magazzino">Magazzino</Link> con "Vedi blocchi".
+            definizione, teorema, metodo, esempio ed esercizio svolto. Conta l'argomento di ogni blocco, non solo
+            quello del documento: se negli appunti sulle derivate c'è un paragrafo sui limiti, vale per i Limiti.
+            Se un tipo o un argomento è stato riconosciuto male, puoi correggerlo dal{" "}
+            <Link to="/magazzino">Magazzino</Link> con "Vedi blocchi".
           </p>
         </Pannello>
       </div>

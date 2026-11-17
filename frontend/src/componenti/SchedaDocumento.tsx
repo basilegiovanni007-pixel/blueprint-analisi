@@ -1,5 +1,5 @@
 // Scheda di un documento del Magazzino: etichette, interruttore attivo/disattivo,
-// modifica, eliminazione e l'elenco dei blocchi con il loro tipo.
+// modifica, eliminazione e l'elenco dei blocchi con il loro tipo e il loro argomento.
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -117,6 +117,8 @@ export default function SchedaDocumento({ documento, opzioni, onCambiato }: Prop
         data: bozza.data,
       });
       setInModifica(false);
+      // Cambiando l'argomento del documento cambiano anche quelli dei blocchi: li rileggiamo
+      if (blocchi) setBlocchi((await leggiDocumento(documento.id)).blocchi);
       onCambiato();
     });
 
@@ -135,6 +137,14 @@ export default function SchedaDocumento({ documento, opzioni, onCambiato }: Prop
       onCambiato();
     });
 
+  // L'argomento di un blocco è riconosciuto in automatico: qui lo studente lo può correggere
+  const cambiaArgomento = (blocco: Blocco, argomento: string) =>
+    prova(async () => {
+      const aggiornato = await modificaBlocco(blocco.id, { argomento });
+      setBlocchi((attuali) => attuali?.map((b) => (b.id === blocco.id ? aggiornato : b)) ?? null);
+      onCambiato(); // aggiorna "Tratta anche" e la Mappa
+    });
+
   // Correzione del testo di un blocco (utile soprattutto per il testo letto dalle foto)
   const correggi = (blocco: Blocco, testo: string) =>
     prova(async () => {
@@ -145,6 +155,8 @@ export default function SchedaDocumento({ documento, opzioni, onCambiato }: Prop
   const dataLeggibile = new Date(documento.data).toLocaleDateString("it-IT");
   // Il file originale è una foto? Allora la mostriamo accanto ai blocchi, per confrontare
   const eFoto = /\.(png|jpe?g|webp|bmp|gif)$/i.test(documento.nome_file);
+  // Gli altri argomenti di cui parla il documento, oltre al suo (es. un paragrafo sui limiti)
+  const altriArgomenti = Object.entries(documento.argomenti_blocchi ?? {}).filter(([a]) => a !== documento.argomento);
 
   return (
     <motion.article
@@ -169,6 +181,12 @@ export default function SchedaDocumento({ documento, opzioni, onCambiato }: Prop
               </span>
             )}
           </div>
+          {altriArgomenti.length > 0 && (
+            <p className="nota argomenti-trattati" title="Argomenti riconosciuti nei singoli blocchi: puoi correggerli da «Vedi blocchi»">
+              Tratta anche:{" "}
+              {altriArgomenti.map(([argomento, quanti]) => `${argomento} (${quanti} ${quanti === 1 ? "blocco" : "blocchi"})`).join(" · ")}
+            </p>
+          )}
         </div>
 
         {/* Interruttore: un documento disattivato resta nel Magazzino ma il risolutore lo ignora */}
@@ -251,6 +269,22 @@ export default function SchedaDocumento({ documento, opzioni, onCambiato }: Prop
                   >
                     {opzioni.tipi_blocco.map((tipo) => (
                       <option key={tipo}>{tipo}</option>
+                    ))}
+                  </select>
+                  {/* Argomento del blocco: evidenziato se è diverso da quello del documento */}
+                  <select
+                    className={"argomento-blocco" + (blocco.argomento !== documento.argomento ? " diverso" : "")}
+                    value={blocco.argomento}
+                    onChange={(e) => cambiaArgomento(blocco, e.target.value)}
+                    aria-label="Argomento del blocco"
+                    title="Argomento riconosciuto in automatico: correggilo se è sbagliato"
+                  >
+                    {Object.entries(opzioni.argomenti).map(([corso, argomenti]) => (
+                      <optgroup key={corso} label={corso}>
+                        {argomenti.map((argomento) => (
+                          <option key={argomento}>{argomento}</option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                   {blocco.pagina && (

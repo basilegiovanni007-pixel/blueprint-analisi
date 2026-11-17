@@ -26,6 +26,20 @@ def crea_tabelle() -> None:
     """Crea le tabelle se non esistono ancora (non cancella nulla)."""
     SQLModel.metadata.create_all(motore)
     aggiungi_colonne_mancanti(motore)
+    togli_collegamenti_orfani(motore)
+
+
+def togli_collegamenti_orfani(motore_db) -> None:
+    """
+    Gli esercizi dello Storico ricordano il documento creato nel Magazzino. Fino a Blueprint 1.1,
+    eliminando quel documento il collegamento restava: qui lo togliamo, prima che SQLite
+    riusi quel numero per un altro documento.
+    """
+    with motore_db.begin() as connessione:
+        connessione.execute(text(
+            "UPDATE esercizio SET documento_id = NULL "
+            "WHERE documento_id IS NOT NULL AND documento_id NOT IN (SELECT id FROM documento)"
+        ))  # fmt: skip
 
 
 def aggiungi_colonne_mancanti(motore_db) -> list[str]:

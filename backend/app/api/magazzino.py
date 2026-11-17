@@ -18,8 +18,9 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from app import config
-from app.db.modelli import Blocco, Documento
+from app.db.modelli import Blocco, Documento, Esercizio
 from app.db.sessione import apri_sessione
+from app.magazzino.argomenti import classifica
 from app.magazzino.blocchi import dividi_in_blocchi
 from app.magazzino.estrazione import FileIlleggibile, estrai
 from app.magazzino.ocr import OcrNonDisponibile
@@ -36,11 +37,28 @@ def _errore(codice: int, messaggio: str) -> HTTPException:
     return HTTPException(status_code=codice, detail=messaggio)
 
 
-def _controlla_etichette(argomento: str, fonte: str, data: str) -> str:
-    """Verifica le etichette e restituisce il corso a cui appartiene l'argomento."""
+AUTOMATICO = "auto"  # argomento scelto al caricamento: "riconoscilo tu"
+
+ERRORE_MODELLO = (
+    "Non riesco a preparare la ricerca. La prima volta serve internet per scaricare "
+    "il modello linguistico (circa 220 MB). Dettaglio: {}"
+)
+
+
+def _controlla_argomento(argomento: str) -> str:
+    """Verifica un argomento e restituisce il corso a cui appartiene."""
     corso = config.corso_di(argomento)
     if corso is None:
         raise _errore(422, f"Argomento non valido: {argomento}")
+    return corso
+
+
+def _controlla_etichette(argomento: str, fonte: str, data: str) -> str | None:
+    """
+    Verifica le etichette e restituisce il corso a cui appartiene l'argomento
+    (None se l'argomento è "auto": il corso si saprà dopo averlo riconosciuto).
+    """
+    corso = None if argomento == AUTOMATICO else _controlla_argomento(argomento)
     if fonte not in config.FONTI:
         raise _errore(422, f"Fonte non valida: {fonte}")
     try:
@@ -68,9 +86,12 @@ def _blocchi_di(sessione: Session, id_documento: int) -> list[Blocco]:
 def _riassunto(sessione: Session, documento: Documento) -> dict:
     """I dati di un documento come li vuole il frontend, con il conteggio dei blocchi per tipo."""
     conteggio: dict[str, int] = {}
+    argomenti: dict[str, int] = {}
     blocchi = _blocchi_di(sessione, documento.id)
     for blocco in blocchi:
         conteggio[blocco.tipo] = conteggio.get(blocco.tipo, 0) + 1
+        argomento = blocco.argomento or documento.argomento
+        argomenti[argomento] = argomenti.get(argomento, 0) + 1
     return {
         "id": documento.id,
         "titolo": documento.titolo,
@@ -84,16 +105,20 @@ def _riassunto(sessione: Session, documento: Documento) -> dict:
         "caricato_il": documento.caricato_il,
         "numero_blocchi": len(blocchi),
         "blocchi_per_tipo": conteggio,
+        # Gli argomenti trattati, dal più presente: es. {"Derivate": 9, "Limiti": 2}
+        "argomenti_blocchi": dict(sorted(argomenti.items(), key=lambda voce: -voce[1])),
     }
 
 
-def _blocco_come_dati(blocco: Blocco) -> dict:
+def _blocco_come_dati(blocco: Blocco, documento: Documento | None = None) -> dict:
     return {
         "id": blocco.id,
         "ordine": blocco.ordine,
         "pagina": blocco.pagina,
         "testo": blocco.testo,
         "tipo": blocco.tipo,
+        # Senza argomento proprio (blocchi delle versioni precedenti) vale quello del documento
+        "argomento": blocco.argomento or (documento.argomento if documento else None),
     }
 
 
@@ -147,16 +172,19 @@ def salva_documento(
     nome: str,
     contenuto: bytes,
     argomento: str,
-    corso: str,
+    corso: str | None,
     fonte: str,
     data: str,
     titolo: str = "",
     tipo_blocchi: str | None = None,
+    riconosci_argomenti: bool = True,
 ) -> dict:
     """
     Salva un documento nel Magazzino: file, testo diviso in blocchi, indice di ricerca.
     Usata sia dal caricamento dei file sia dallo Storico ("aggiungi al Magazzino").
+    argomento: quello scelto dallo studente, oppure "auto" per riconoscerlo dal contenuto.
     tipo_blocchi: se indicato, tutti i blocchi ricevono questo tipo (es. "esercizio svolto").
+    riconosci_argomenti: se False tutti i blocchi prendono l'argomento del documento.
     """
     estensione = Path(nome).suffix.lower()
 
@@ -176,6 +204,21 @@ def salva_documento(
         percorso.unlink(missing_ok=True)
         raise _errore(503, f"{errore} Reinstalla Blueprint oppure carica un PDF con testo, Word, .txt, .md o .tex.")
 
+    # 3b. Argomenti: di ogni blocco e, se lo studente ha scelto "auto", del documento
+    testi = [b.testo for b in blocchi_grezzi]
+    if riconosci_argomenti:
+        try:
+            classificazione = classifica(testi, None if argomento == AUTOMATICO else argomento)
+        except Exception as errore:
+            percorso.unlink(missing_ok=True)
+            raise _errore(503, ERRORE_MODELLO.format(errore))
+        argomento_riconosciuto = argomento == AUTOMATICO
+        argomento, argomenti_blocchi = classificazione.argomento_documento, classificazione.argomenti_blocchi
+    else:
+        argomento_riconosciuto = False
+        argomenti_blocchi = [argomento] * len(testi)
+    corso = config.corso_di(argomento) or corso
+
     # 4. Salvataggio nel database
     documento = Documento(
         titolo=titolo.strip() or Path(nome).stem,
@@ -192,7 +235,14 @@ def salva_documento(
     sessione.refresh(documento)
 
     blocchi = [
-        Blocco(documento_id=documento.id, ordine=i, pagina=b.pagina, testo=b.testo, tipo=tipo_blocchi or b.tipo)
+        Blocco(
+            documento_id=documento.id,
+            ordine=i,
+            pagina=b.pagina,
+            testo=b.testo,
+            tipo=tipo_blocchi or b.tipo,
+            argomento=argomenti_blocchi[i],
+        )
         for i, b in enumerate(blocchi_grezzi)
     ]
     sessione.add_all(blocchi)
@@ -210,13 +260,10 @@ def salva_documento(
         sessione.delete(documento)
         sessione.commit()
         percorso.unlink(missing_ok=True)
-        raise _errore(
-            503,
-            "Non riesco a preparare la ricerca. La prima volta serve internet per scaricare "
-            f"il modello linguistico (circa 220 MB). Dettaglio: {errore}",
-        )
+        raise _errore(503, ERRORE_MODELLO.format(errore))
 
     riassunto = _riassunto(sessione, documento)
+    riassunto["argomento_riconosciuto"] = argomento_riconosciuto  # per dirlo allo studente
     # Solo subito dopo il caricamento: com'è andata la lettura di foto e scansioni
     if estrazione.letto_con_ocr:
         riassunto["ocr"] = {
@@ -239,7 +286,7 @@ def leggi_documento(id_documento: int, sessione: Session = Depends(apri_sessione
     """Un documento con tutti i suoi blocchi."""
     documento = _trova_documento(sessione, id_documento)
     dati = _riassunto(sessione, documento)
-    dati["blocchi"] = [_blocco_come_dati(b) for b in _blocchi_di(sessione, id_documento)]
+    dati["blocchi"] = [_blocco_come_dati(b, documento) for b in _blocchi_di(sessione, id_documento)]
     return dati
 
 
@@ -271,7 +318,15 @@ def modifica_documento(
     argomento = modifica.argomento or documento.argomento
     fonte = modifica.fonte or documento.fonte
     data = modifica.data or documento.data
-    documento.corso = _controlla_etichette(argomento, fonte, data)
+    documento.corso = _controlla_argomento(argomento)
+    _controlla_etichette(argomento, fonte, data)
+    if argomento != documento.argomento:
+        # Se lo studente corregge l'argomento del documento, lo seguono i blocchi che avevano
+        # quello vecchio; quelli riconosciuti (o corretti) come un altro argomento restano com'erano.
+        for blocco in _blocchi_di(sessione, documento.id):
+            if blocco.argomento in (None, documento.argomento):
+                blocco.argomento = argomento
+                sessione.add(blocco)
     documento.argomento, documento.fonte, documento.data = argomento, fonte, data
 
     sessione.add(documento)
@@ -289,6 +344,12 @@ def elimina_documento(id_documento: int, sessione: Session = Depends(apri_sessio
     indice.rimuovi([b.id for b in blocchi])
     for blocco in blocchi:
         sessione.delete(blocco)
+    # Se era un esercizio dello Storico, l'esercizio "dimentica" il collegamento. Va fatto subito:
+    # SQLite riusa i numeri dei documenti eliminati, e il prossimo documento caricato verrebbe
+    # scambiato per un esercizio generato dall'app (e non citato come fonte).
+    for esercizio in sessione.exec(select(Esercizio).where(Esercizio.documento_id == id_documento)):
+        esercizio.documento_id = None
+        sessione.add(esercizio)
     sessione.delete(documento)
     sessione.commit()
     (config.CARTELLA_FILE / documento.file_salvato).unlink(missing_ok=True)
@@ -329,6 +390,7 @@ def immagine_pagina(id_documento: int, numero: int, sessione: Session = Depends(
 class ModificaBlocco(BaseModel):
     tipo: str | None = None
     testo: str | None = None
+    argomento: str | None = None
 
 
 @router.patch("/blocchi/{id_blocco}")
@@ -337,7 +399,7 @@ def modifica_blocco(
     modifica: ModificaBlocco,
     sessione: Session = Depends(apri_sessione),
 ) -> dict:
-    """Cambia il tipo di un blocco (es. da "altro" a "teorema") o ne corregge il testo."""
+    """Cambia il tipo (es. da "altro" a "teorema") o l'argomento di un blocco, o ne corregge il testo."""
     blocco = sessione.get(Blocco, id_blocco)
     if blocco is None:
         raise _errore(404, "Blocco non trovato.")
@@ -346,6 +408,10 @@ def modifica_blocco(
         if modifica.tipo not in config.TIPI_BLOCCO:
             raise _errore(422, f"Tipo non valido: {modifica.tipo}")
         blocco.tipo = modifica.tipo
+
+    if modifica.argomento is not None:
+        _controlla_argomento(modifica.argomento)
+        blocco.argomento = modifica.argomento
 
     if modifica.testo is not None:
         if not modifica.testo.strip():
@@ -357,7 +423,7 @@ def modifica_blocco(
     sessione.add(blocco)
     sessione.commit()
     sessione.refresh(blocco)
-    return _blocco_come_dati(blocco)
+    return _blocco_come_dati(blocco, sessione.get(Documento, blocco.documento_id))
 
 
 # ---------- ricerca ----------
@@ -422,7 +488,7 @@ def cerca(q: str, quanti: int = 8, sessione: Session = Depends(apri_sessione)) -
         documento = attivi[blocco.documento_id]
         risultati.append(
             {
-                **_blocco_come_dati(blocco),
+                **_blocco_come_dati(blocco, documento),
                 "somiglianza": somiglianza,
                 "documento": {
                     "id": documento.id,
@@ -443,25 +509,37 @@ def leggi_mappa(sessione: Session = Depends(apri_sessione)) -> list[dict]:
     """
     Per ogni argomento dice quanti documenti e blocchi attivi ci sono e calcola la copertura.
 
+    Conta l'argomento di ogni BLOCCO, non solo quello del documento: se negli appunti sulle
+    derivate c'è un paragrafo sui limiti, quel paragrafo conta per i Limiti. Un documento
+    conta per tutti gli argomenti di cui ha almeno un blocco.
+
     Copertura = quanti dei 5 tipi di blocco (definizione, teorema, metodo, esempio,
     esercizio svolto) sono presenti per quell'argomento. 5 su 5 = 100%.
     """
     attivi = list(sessione.exec(select(Documento).where(Documento.attivo == True)))  # noqa: E712
 
+    per_argomento: dict[str, dict[str, int]] = {}  # argomento -> tipo -> numero di blocchi
+    documenti_di: dict[str, set[int]] = {}  # argomento -> documenti che ne parlano
+    for documento in attivi:
+        blocchi = _blocchi_di(sessione, documento.id)
+        if not blocchi:
+            documenti_di.setdefault(documento.argomento, set()).add(documento.id)
+        for blocco in blocchi:
+            argomento = blocco.argomento or documento.argomento
+            documenti_di.setdefault(argomento, set()).add(documento.id)
+            tipi = per_argomento.setdefault(argomento, {})
+            tipi[blocco.tipo] = tipi.get(blocco.tipo, 0) + 1
+
     mappa = []
     for corso, argomenti in config.ARGOMENTI.items():
         voci = []
         for argomento in argomenti:
-            documenti = [d for d in attivi if d.argomento == argomento]
-            per_tipo = {tipo: 0 for tipo in config.TIPI_BLOCCO}
-            for documento in documenti:
-                for blocco in _blocchi_di(sessione, documento.id):
-                    per_tipo[blocco.tipo] = per_tipo.get(blocco.tipo, 0) + 1
+            per_tipo = {tipo: 0 for tipo in config.TIPI_BLOCCO} | per_argomento.get(argomento, {})
             presenti = [t for t in config.TIPI_PER_COPERTURA if per_tipo[t] > 0]
             voci.append(
                 {
                     "argomento": argomento,
-                    "documenti": len(documenti),
+                    "documenti": len(documenti_di.get(argomento, ())),
                     "blocchi": sum(per_tipo.values()),
                     "blocchi_per_tipo": per_tipo,
                     "tipi_mancanti": [t for t in config.TIPI_PER_COPERTURA if per_tipo[t] == 0],

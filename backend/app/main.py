@@ -13,8 +13,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import grafici, magazzino, progressi, risolutore, stato, storico
-from app.db.sessione import crea_tabelle
+from app.db.sessione import crea_tabelle, motore
 from app.frontend_statico import monta_frontend
+from app.magazzino.argomenti import assegna_mancanti
 from app.magazzino.indice import indice
 
 
@@ -22,7 +23,9 @@ from app.magazzino.indice import indice
 async def ciclo_di_vita(app: FastAPI):
     """Codice eseguito una volta all'accensione del server."""
     crea_tabelle()  # crea il database se non esiste
-    indice.prepara_in_sottofondo()  # carica il modello di ricerca senza bloccare l'avvio
+    # Carica il modello di ricerca senza bloccare l'avvio; quando è pronto, dà un argomento
+    # ai blocchi caricati con le versioni precedenti (che non ce l'hanno ancora)
+    indice.prepara_in_sottofondo(poi=lambda: assegna_mancanti(motore))
     yield
 
 

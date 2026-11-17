@@ -19,7 +19,7 @@ from app.risolutore.citazioni import Biblioteca
 from app.risolutore.da_file import leggi_esercizi
 from app.risolutore.interpreta import interpreta
 from app.risolutore.modelli import ErroreRisolutore
-from app.risolutore.risolvi import risolvi
+from app.risolutore.risolvi import ARGOMENTO_DI_TIPO, risolvi
 
 router = APIRouter(prefix="/api/risolutore", tags=["risolutore"])
 
@@ -34,7 +34,7 @@ def risolvi_esercizio(richiesta: Richiesta, sessione: Session = Depends(apri_ses
     """Capisce l'esercizio, lo risolve con SymPy e collega ogni passaggio al Magazzino."""
     try:
         problema = interpreta(richiesta.testo, richiesta.tipo)
-        soluzione = risolvi(problema, Biblioteca(sessione))
+        soluzione = risolvi(problema, Biblioteca(sessione, ARGOMENTO_DI_TIPO.get(problema.tipo)))
     except ErroreRisolutore as errore:
         # 422 = "ho ricevuto la richiesta ma il contenuto non va bene"
         raise HTTPException(status_code=422, detail=str(errore))
