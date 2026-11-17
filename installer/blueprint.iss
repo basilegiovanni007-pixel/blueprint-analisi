@@ -3,7 +3,7 @@
 ; Si usa tramite crea_installer.ps1, che passa la versione con /DVersione=...
 
 #ifndef Versione
-  #define Versione "1.1.0"
+  #define Versione "1.2.0"
 #endif
 
 [Setup]

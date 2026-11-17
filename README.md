@@ -356,7 +356,7 @@ GitHub CLI (`winget install GitHub.cli`), e aver avviato almeno una volta l'app 
 1. Crea l'installer (circa 5 minuti), indicando il numero di versione:
 
    ```
-   .\installer\crea_installer.ps1 -Versione 1.1.0
+   .\installer\crea_installer.ps1 -Versione 1.2.0
    ```
 
    Il risultato è `installer\Output\Blueprint-Setup.exe`.
@@ -364,7 +364,7 @@ GitHub CLI (`winget install GitHub.cli`), e aver avviato almeno una volta l'app 
 2. Pubblicalo come nuova Release su GitHub:
 
    ```
-   gh release create v1.1.0 installer\Output\Blueprint-Setup.exe --title "Blueprint 1.1.0" --notes "Cosa cambia..."
+   gh release create v1.2.0 installer\Output\Blueprint-Setup.exe --title "Blueprint 1.2.0" --notes "Cosa cambia..."
    ```
 
 Il sito non va modificato: il pulsante «Scarica» punta sempre all'ultima Release
